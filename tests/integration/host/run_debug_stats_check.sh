@@ -7,7 +7,7 @@ tmpdir=${TMPDIR:-/tmp}/pythonami-debug-stats-$$
 trap 'rm -rf "$tmpdir"' EXIT
 mkdir "$tmpdir"
 printf '14\n' >"$tmpdir/expected14"
-printf 'Python68K 0.7.1\n' >"$tmpdir/expected_version"
+printf 'Python68K 0.8.0\n' >"$tmpdir/expected_version"
 tr -d '\r' <"$tmpdir/expected14" >"$tmpdir/expected14.normalized"
 tr -d '\r' <"$tmpdir/expected_version" >"$tmpdir/expected_version.normalized"
 

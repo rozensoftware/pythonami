@@ -20,7 +20,7 @@ does not execute it; use it before `-c` or the script path.
 
 | Command | Example | Description |
 | --- | --- | --- |
-| Show version | `pythonami -V` | Prints the current version, `Python68K 0.7.1`. `--version` is the long form. |
+| Show version | `pythonami -V` | Prints the current version, `Python68K 0.8.0`. `--version` is the long form. |
 | Show help | `pythonami --help` | Prints the usage line. Running `pythonami` with no input does the same. |
 | Run a script | `pythonami examples/hello.py` | Loads, compiles, verifies, and executes one `.py` source file. |
 | Pass script arguments | `pythonami examples/test_features.py one two` | Makes the script path and following arguments available as `sys.argv`. |
@@ -205,27 +205,27 @@ decisions.
 | --- | --- | --- |
 | Numeric types | Arbitrary-precision `int`, `float` (double), `complex` | Checked 32-bit `int` (raises `OverflowError`), binary32 `float` (no NaN/Inf), no `complex` |
 | Strings | Unicode `str`, separate `bytes`/`bytearray` | 8-bit `str` only; no `bytes`, `bytearray`, or `encode`/`decode` |
-| Classes | `class`, instances, inheritance, `__init__`, dunder protocol | Not implemented; only a fixed per-type method table |
+| Classes | `class`, instances, single inheritance, `__init__`, bound methods | Language Level 0.8; no MI/`super()`/descriptors |
 | Functions | Closures, nested `def`, `*args`/`**kwargs`, default/keyword args | `def` without nesting or closures; methods are positional-only |
 | Iteration | Generators with `send`/`throw`/`close`/`yield from`, `enumerate`, `reversed` | `yield` generators and generator expressions (free variables snapshotted at creation), comprehensions, `iter`/`next`; no `send`/`throw`/`close`/`yield from` |
 | Unpacking | Starred (`a, *rest`) and nested (`(a, b), c = …`) targets | Fixed-count unpacking of list/tuple/string only |
 | Imports | Packages, relative imports, `from x import *` | Single-level `.py` modules, explicit names only |
 | File I/O | `open()`, file objects with `.read()`/`.write()`/`seek()` | `fopen`/`fread`/`freadline`/`fwrite`/`fclose` procedural API; no `seek` |
 | Process control | `subprocess.run`/`Popen`, async process APIs | Synchronous `os.system` and `os.popen` (captured text only) |
-| Error handling | Full exception class hierarchy, `except (A, B)` | Flat catchable kind set (`TypeError`, `ValueError`, `IndexError`, `KeyError`, `ZeroDivisionError`, `OverflowError`, `NameError`, `OSError`/`IOError`, `RecursionError`, `ImportError`, `StopIteration`); matching by kind, not hierarchy |
+| Error handling | `except (A, B)`, full MI MRO | Single-inheritance exception types (0.8); kind tags kept internally |
 | Dynamic execution | `eval`, `exec`, `compile` | Not implemented |
 | Pattern matching | `match` / `case` | Not implemented |
 
 ## Missing areas versus CPython
 
-The following are not implemented in any Language Level through 0.7 and have
+The following are not implemented in any Language Level through 0.8 and have
 no scheduled release; treat scripts depending on them as unsupported until
 `language-reference.md` records otherwise:
 
-- Classes, instances, and inheritance.
+- Multiple inheritance, metaclasses, `super()`, descriptors/`property`, operator dunders.
 - Unicode text and the `bytes`/`bytearray` types.
 - Generator `send`/`throw`/`close()`, `yield from`, and `yield` as an expression.
-- Closures and nested `def` (generator expressions snapshot enclosing locals
+- Closures and nested `def` outside class methods (generator expressions snapshot enclosing locals
   instead of capturing them).
 - `async`/`await` and the `match` statement.
 - Starred and nested unpacking (`a, *rest`; `(a, b), c = …`; `*args`/`**kwargs`).

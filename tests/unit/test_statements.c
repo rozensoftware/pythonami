@@ -113,12 +113,30 @@ int main(void)
                         &module, &error),
           "break outside loop is rejected");
     py68_ast_arena_destroy(&arena);
-    passed &= check(!parse_module(&allocator, "class Thing:\n    pass\n",
+    passed &= check(parse_module(&allocator, "class Thing:\n    pass\n",
                                   &arena, &module, &error),
-                    "class is rejected");
+                    "empty class parses");
+    if (module != NULL) {
+        passed &= check(module->as.module.statements.count == 1 &&
+                        module->as.module.statements.items[0]->kind ==
+                            PY68_AST_CLASS_DEF,
+                        "class node is created");
+        passed &= check(module->as.module.statements.items[0]
+                            ->as.class_def.base == NULL,
+                        "class without base has NULL base");
+        passed &= check(module->as.module.statements.items[0]
+                            ->as.class_def.body.count == 1 &&
+                        module->as.module.statements.items[0]
+                            ->as.class_def.body.items[0]->kind == PY68_AST_PASS,
+                        "class body is pass");
+    }
+    py68_ast_arena_destroy(&arena);
+    passed &= check(!parse_module(&allocator, "lambda x: x\n",
+                                  &arena, &module, &error),
+                    "lambda is rejected");
     passed &= check(error.kind == PY68_ERROR_SYNTAX &&
-                    strstr(error.message, "class is not supported") != NULL,
-                    "class diagnostic names the keyword");
+                    strstr(error.message, "lambda is not supported") != NULL,
+                    "lambda diagnostic names the keyword");
     py68_ast_arena_destroy(&arena);
     passed &= check(!parse_module(&allocator, "from .x import y\n",
                                   &arena, &module, &error),

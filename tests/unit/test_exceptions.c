@@ -72,8 +72,8 @@ int main(void)
                                     &io_error) == PY68_STATUS_OK;
     passed &= py68_exception_new(&runtime, PY68_ERROR_IO, "disk", &raised) ==
               PY68_STATUS_OK;
-    passed &= py68_exception_matches(raised, os_error) != 0;
-    passed &= py68_exception_matches(raised, io_error) != 0;
+    passed &= py68_exception_matches(&runtime, raised, os_error) != 0;
+    passed &= py68_exception_matches(&runtime, raised, io_error) != 0;
     py68_object_release(&runtime, &raised->base);
     py68_value_release(&runtime, os_error);
     py68_value_release(&runtime, io_error);

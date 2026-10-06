@@ -57,6 +57,9 @@ typedef struct Py68Frame {
     struct Py68Generator *generator;
     Py68U16 stack_base;
     Py68U16 resume_kind;
+    /* When calling type.__init__, holds the constructing instance; on return
+       the instance is pushed instead of __init__'s None (Level 0.8). */
+    Py68Value constructing;
 } Py68Frame;
 
 typedef struct Py68GlobalEntry {
@@ -103,6 +106,13 @@ struct Py68Runtime {
     /* Set while executing an imported module body so MAKE_FUNCTION can bind
        LOAD_GLOBAL to that module's globals. */
     struct Py68Module *executing_module;
+    struct Py68Type *object_type;
+    struct Py68Type *type_type;
+    struct Py68Type *base_exception_type;
+    struct Py68Type *exception_type;
+    /* Indexed by Py68ErrorKind; NULL for non-exception kinds. Borrowed from
+       builtins. */
+    struct Py68Type *exception_by_kind[32];
 };
 
 void py68_runtime_initialize_struct(Py68Runtime *runtime);

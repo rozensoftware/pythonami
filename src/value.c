@@ -82,7 +82,7 @@ int py68_error_is_catchable(Py68U16 kind)
            kind == PY68_ERROR_ZERO_DIVISION || kind == PY68_ERROR_OVERFLOW ||
            kind == PY68_ERROR_NAME || kind == PY68_ERROR_IO ||
            kind == PY68_ERROR_RECURSION || kind == PY68_ERROR_IMPORT ||
-           kind == PY68_ERROR_STOP_ITERATION;
+           kind == PY68_ERROR_STOP_ITERATION || kind == PY68_ERROR_EXCEPTION;
 }
 
 int py68_value_truthy(Py68Value value)

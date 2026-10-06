@@ -6,8 +6,8 @@ LDFLAGS ?=
 
 HOST_BUILD := build/host
 HOST_PROGRAM := $(HOST_BUILD)/pythonami
-HOST_SOURCES := src/main.c src/error.c src/memory.c src/platform_host.c src/time.c src/file_host.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/tokenizer.c src/ast_arena.c src/parser_expression.c src/parser_statement.c src/symbol.c src/code.c src/opcode.c src/compiler.c src/verify.c src/vm.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/function.c src/generator.c src/native.c src/frame.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/import.c src/module.c src/float.c
-TEST_COMMON := src/error.c src/memory.c src/platform_host.c src/time.c src/file_host.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/frame.c src/generator.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/native.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/module.c src/code.c src/opcode.c src/float.c
+HOST_SOURCES := src/main.c src/error.c src/memory.c src/platform_host.c src/time.c src/file_host.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/tokenizer.c src/ast_arena.c src/parser_expression.c src/parser_statement.c src/symbol.c src/code.c src/opcode.c src/compiler.c src/verify.c src/vm.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/function.c src/generator.c src/native.c src/frame.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/type.c src/import.c src/module.c src/float.c
+TEST_COMMON := src/error.c src/memory.c src/platform_host.c src/time.c src/file_host.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/frame.c src/generator.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/native.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/type.c src/module.c src/code.c src/opcode.c src/float.c
 TEST_MEMORY_SOURCES := tests/unit/test_memory.c $(TEST_COMMON)
 TEST_TOKENIZER_SOURCES := tests/unit/test_tokenizer.c $(TEST_COMMON) src/tokenizer.c
 TEST_PARSER_SOURCES := tests/unit/test_parser.c $(TEST_COMMON) src/tokenizer.c src/ast_arena.c src/parser_expression.c src/parser_statement.c
@@ -208,6 +208,7 @@ language-test: $(HOST_PROGRAM)
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/test_file_io_suite.py tests/fixtures/language/test_file_io_suite.expected.txt
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/types/test_types.py tests/fixtures/language/types/test_types.expected.txt
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/exceptions/test_exceptions.py tests/fixtures/language/exceptions/test_exceptions.expected.txt
+	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/classes/test_classes.py tests/fixtures/language/classes/test_classes.expected.txt
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/exceptions/test_with.py tests/fixtures/language/exceptions/test_with.expected.txt
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/import/test_import_driver.py tests/fixtures/language/import/test_import_driver.expected.txt
 	$(LANGUAGE_CHECK) $(HOST_PROGRAM) tests/language/import/test_argv.py tests/fixtures/language/import/test_argv.expected.txt arg-one arg-two

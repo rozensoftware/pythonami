@@ -215,32 +215,29 @@ static Py68Status py68_parse_statement(Py68StatementParser *parser,
     if (token->kind == PY68_TOKEN_UNSUPPORTED_KEYWORD) {
         const Py68U8 *text = parser->expression.source->data +
                              token->location.offset;
-        if (token->location.length == 5 && memcmp(text, "class", 5) == 0)
-            return py68_statement_error(parser, token,
-                "class is not supported by Python68K Language Level 0.6");
         if (token->location.length == 6 && memcmp(text, "lambda", 6) == 0)
             return py68_statement_error(parser, token,
-                "lambda is not supported by Python68K Language Level 0.6");
+                "lambda is not supported by Python68K Language Level 0.8");
         if (token->location.length == 6 && memcmp(text, "global", 6) == 0)
             return py68_statement_error(parser, token,
-                "global is not supported by Python68K Language Level 0.6");
+                "global is not supported by Python68K Language Level 0.8");
         if (token->location.length == 8 && memcmp(text, "nonlocal", 8) == 0)
             return py68_statement_error(parser, token,
-                "nonlocal is not supported by Python68K Language Level 0.6");
+                "nonlocal is not supported by Python68K Language Level 0.8");
         if (token->location.length == 5 && memcmp(text, "async", 5) == 0)
             return py68_statement_error(parser, token,
-                "async is not supported by Python68K Language Level 0.6");
+                "async is not supported by Python68K Language Level 0.8");
         if (token->location.length == 5 && memcmp(text, "await", 5) == 0)
             return py68_statement_error(parser, token,
-                "await is not supported by Python68K Language Level 0.6");
+                "await is not supported by Python68K Language Level 0.8");
         if (token->location.length == 5 && memcmp(text, "match", 5) == 0)
             return py68_statement_error(parser, token,
-                "match is not supported by Python68K Language Level 0.6");
+                "match is not supported by Python68K Language Level 0.8");
         if (token->location.length == 4 && memcmp(text, "case", 4) == 0)
             return py68_statement_error(parser, token,
-                "case is not supported by Python68K Language Level 0.6");
+                "case is not supported by Python68K Language Level 0.8");
         return py68_statement_error(parser, token,
-            "this keyword is not supported by Python68K Language Level 0.6");
+            "this keyword is not supported by Python68K Language Level 0.8");
     }
     if (token->kind == PY68_TOKEN_IMPORT) {
         Py68Token *name_token;
@@ -664,6 +661,64 @@ static Py68Status py68_parse_statement(Py68StatementParser *parser,
             parser->loop_depth = old_loop;
         }
         if (status != PY68_STATUS_OK) return status;
+        *node_out = node;
+        return PY68_STATUS_OK;
+    }
+    if (token->kind == PY68_TOKEN_CLASS) {
+        Py68Token *name_token;
+        Py68AstNode *base = NULL;
+        Py68U16 body_index;
+        ++parser->expression.position;
+        name_token = py68_statement_current(parser);
+        if (name_token == NULL || name_token->kind != PY68_TOKEN_NAME) {
+            return py68_statement_error(parser, name_token,
+                                        "expected class name");
+        }
+        ++parser->expression.position;
+        if (py68_statement_accept(parser, PY68_TOKEN_LEFT_PAREN)) {
+            if (!py68_statement_accept(parser, PY68_TOKEN_RIGHT_PAREN)) {
+                status = py68_parse_expression(&parser->expression, &base);
+                if (status != PY68_STATUS_OK) return status;
+                if (py68_statement_accept(parser, PY68_TOKEN_COMMA)) {
+                    return py68_statement_error(
+                        parser, py68_statement_current(parser),
+                        "multiple base classes are not supported");
+                }
+                if (!py68_statement_accept(parser, PY68_TOKEN_RIGHT_PAREN)) {
+                    return py68_statement_error(
+                        parser, py68_statement_current(parser),
+                        "expected closing parenthesis");
+                }
+            }
+        }
+        if (!py68_statement_accept(parser, PY68_TOKEN_COLON)) {
+            return py68_statement_error(parser, py68_statement_current(parser),
+                                        "expected class colon");
+        }
+        status = py68_statement_new(parser, PY68_AST_CLASS_DEF, token, &node);
+        if (status != PY68_STATUS_OK) return status;
+        node->as.class_def.name_offset = name_token->location.offset;
+        node->as.class_def.name_length = name_token->location.length;
+        node->as.class_def.base = base;
+        py68_ast_list_initialize(&node->as.class_def.body);
+        status = py68_parse_suite(parser, &node->as.class_def.body);
+        if (status != PY68_STATUS_OK) return status;
+        for (body_index = 0; body_index < node->as.class_def.body.count;
+             ++body_index) {
+            Py68AstNode *body_stmt = node->as.class_def.body.items[body_index];
+            if (body_stmt->kind == PY68_AST_PASS)
+                continue;
+            if (body_stmt->kind == PY68_AST_FUNCTION_DEF)
+                continue;
+            if (body_stmt->kind == PY68_AST_ASSIGN &&
+                body_stmt->as.assign.target == NULL)
+                continue;
+            py68_error_set(parser->expression.error, PY68_ERROR_SYNTAX,
+                           body_stmt->location,
+                           parser->expression.source->filename,
+                           "class body only allows pass, assignment, and def");
+            return PY68_STATUS_SOURCE_ERROR;
+        }
         *node_out = node;
         return PY68_STATUS_OK;
     }

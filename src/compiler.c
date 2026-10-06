@@ -1251,6 +1251,154 @@ static Py68Status py68_compile_statements(Py68Allocator *allocator,
                                       def_name_index);
             break;
         }
+        case PY68_AST_CLASS_DEF: {
+            Py68U16 build_index;
+            Py68U16 class_name_index;
+            Py68U16 const_index;
+            Py68U16 body_index;
+            Py68Constant constant;
+            Py68U8 call_argc;
+            if (function != NULL) {
+                py68_compile_error(error, source, statement->location,
+                                   "class inside function is not supported");
+                return PY68_STATUS_SOURCE_ERROR;
+            }
+            status = py68_code_add_interned_name(allocator, code,
+                                                 "__build_class__", 15,
+                                                 &build_index);
+            if (status != PY68_STATUS_OK) return status;
+            status = py68_emit_u16_op(allocator, code, OP_LOAD_GLOBAL,
+                                      build_index);
+            if (status != PY68_STATUS_OK) return status;
+            status = py68_emit_u16_op(allocator, code, OP_BUILD_DICT, 0);
+            if (status != PY68_STATUS_OK) return status;
+            for (body_index = 0; body_index < statement->as.class_def.body.count;
+                 ++body_index) {
+                Py68AstNode *body_stmt =
+                    statement->as.class_def.body.items[body_index];
+                if (body_stmt->kind == PY68_AST_PASS)
+                    continue;
+                if (body_stmt->kind == PY68_AST_ASSIGN) {
+                    constant.kind = PY68_CONSTANT_STRING;
+                    constant.flags = 0;
+                    constant.integer = 0;
+                    constant.offset = body_stmt->as.assign.name_offset;
+                    constant.length = body_stmt->as.assign.name_length;
+                    status = py68_code_add_constant(allocator, code, constant,
+                                                    &const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_u16_op(allocator, code, OP_LOAD_CONST,
+                                              const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_compile_expression(
+                        allocator, source, body_stmt->as.assign.value, code,
+                        error, analysis, function);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_u8_op(allocator, code, OP_MAP_ADD, 2);
+                    if (status != PY68_STATUS_OK) return status;
+                    continue;
+                }
+                if (body_stmt->kind == PY68_AST_FUNCTION_DEF) {
+                    const Py68FunctionSymbols *nested_symbols;
+                    Py68Code *nested_code;
+                    Py68U16 nested_index;
+                    nested_symbols =
+                        py68_symbol_find_function(analysis, body_stmt);
+                    if (nested_symbols == NULL) {
+                        py68_compile_error(
+                            error, source, body_stmt->location,
+                            "internal error: missing function symbols");
+                        return PY68_STATUS_INTERNAL_ERROR;
+                    }
+                    /* key under dict before value for MAP_ADD */
+                    constant.kind = PY68_CONSTANT_STRING;
+                    constant.flags = 0;
+                    constant.integer = 0;
+                    constant.offset = body_stmt->as.function_def.name_offset;
+                    constant.length = body_stmt->as.function_def.name_length;
+                    status = py68_code_add_constant(allocator, code, constant,
+                                                    &const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_u16_op(allocator, code, OP_LOAD_CONST,
+                                              const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_code_reserve_nested(allocator, code,
+                                                      &nested_code,
+                                                      &nested_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    nested_code->source_data = source->data;
+                    nested_code->source_length = source->length;
+                    nested_code->name_offset =
+                        body_stmt->as.function_def.name_offset;
+                    nested_code->name_length =
+                        body_stmt->as.function_def.name_length;
+                    nested_code->argument_count =
+                        nested_symbols->parameter_count;
+                    nested_code->local_count = (Py68U16)(
+                        nested_symbols->parameter_count +
+                        nested_symbols->local_count);
+                    nested_code->is_generator =
+                        py68_statements_yield(
+                            &body_stmt->as.function_def.body)
+                            ? (Py68U16)1 : (Py68U16)0;
+                    status = py68_compile_statements(
+                        allocator, source, &body_stmt->as.function_def.body,
+                        nested_code, error, NULL, analysis, nested_symbols,
+                        NULL);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_op(allocator, nested_code,
+                                          OP_RETURN_NONE);
+                    if (status != PY68_STATUS_OK) return status;
+                    constant.kind = PY68_CONSTANT_CODE;
+                    constant.flags = 0;
+                    constant.integer = (Py68I32)nested_index;
+                    constant.offset = 0;
+                    constant.length = 0;
+                    status = py68_code_add_constant(allocator, code, constant,
+                                                    &const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_u16_op(allocator, code, OP_MAKE_FUNCTION,
+                                              const_index);
+                    if (status != PY68_STATUS_OK) return status;
+                    status = py68_emit_u8_op(allocator, code, OP_MAP_ADD, 2);
+                    if (status != PY68_STATUS_OK) return status;
+                    continue;
+                }
+                py68_compile_error(
+                    error, source, body_stmt->location,
+                    "class body only allows pass, assignment, and def");
+                return PY68_STATUS_SOURCE_ERROR;
+            }
+            constant.kind = PY68_CONSTANT_STRING;
+            constant.flags = 0;
+            constant.integer = 0;
+            constant.offset = statement->as.class_def.name_offset;
+            constant.length = statement->as.class_def.name_length;
+            status = py68_code_add_constant(allocator, code, constant,
+                                            &const_index);
+            if (status != PY68_STATUS_OK) return status;
+            status = py68_emit_u16_op(allocator, code, OP_LOAD_CONST,
+                                      const_index);
+            if (status != PY68_STATUS_OK) return status;
+            call_argc = 2;
+            if (statement->as.class_def.base != NULL) {
+                status = py68_compile_expression(
+                    allocator, source, statement->as.class_def.base, code,
+                    error, analysis, function);
+                if (status != PY68_STATUS_OK) return status;
+                call_argc = 3;
+            }
+            status = py68_emit_u8_op(allocator, code, OP_CALL, call_argc);
+            if (status != PY68_STATUS_OK) return status;
+            status = py68_code_add_name(allocator, code,
+                                        statement->as.class_def.name_offset,
+                                        statement->as.class_def.name_length,
+                                        &class_name_index);
+            if (status != PY68_STATUS_OK) return status;
+            status = py68_emit_u16_op(allocator, code, OP_STORE_GLOBAL,
+                                      class_name_index);
+            break;
+        }
         case PY68_AST_RAISE:
             if (statement->as.raise_statement.value != NULL) {
                 status = py68_compile_expression(

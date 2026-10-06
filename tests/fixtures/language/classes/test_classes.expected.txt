@@ -1,0 +1,9 @@
+x
+creature
+True
+True
+True
+True
+boom
+caught
+user-exc

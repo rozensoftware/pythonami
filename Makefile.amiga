@@ -10,7 +10,7 @@ AMIGA_RELEASE := -O=1 -use-framepointer -no-delayed-popping
 VBCC_INCLUDE := $(VBCC)/targets/m68k-amigaos/include
 VBCC_LIB := $(VBCC)/targets/m68k-amigaos/lib
 CPPFLAGS := -Iinclude -I$(VBCC_INCLUDE) -I$(NDK)/Include_H -DPY68K_AMIGA=1
-SOURCES := src/main.c src/error.c src/memory.c src/platform_amiga.c src/time.c src/file_amiga.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/tokenizer.c src/ast_arena.c src/parser_expression.c src/parser_statement.c src/symbol.c src/code.c src/opcode.c src/compiler.c src/verify.c src/vm.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/function.c src/generator.c src/native.c src/frame.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/import.c src/module.c src/float.c src/ext_amiga.c
+SOURCES := src/main.c src/error.c src/memory.c src/platform_amiga.c src/time.c src/file_amiga.c src/file_object.c src/runtime.c src/ext_services.c src/source.c src/token.c src/tokenizer.c src/ast_arena.c src/parser_expression.c src/parser_statement.c src/symbol.c src/code.c src/opcode.c src/compiler.c src/verify.c src/vm.c src/value.c src/object.c src/string.c src/string_methods.c src/list.c src/range.c src/function.c src/generator.c src/native.c src/frame.c src/global.c src/builtin.c src/builtin_process.c src/builtin_io.c src/builtin_file.c src/builtin_text.c src/tuple.c src/dict.c src/set.c src/attr.c src/exception.c src/type.c src/import.c src/module.c src/float.c src/ext_amiga.c
 
 EXT_DEMO_DIR := ext/demo_add
 EXT_DEMO_OUT := $(EXT_DEMO_DIR)/demo_add.py68k

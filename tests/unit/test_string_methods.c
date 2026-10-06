@@ -41,7 +41,7 @@ int main(void)
               PY68_STATUS_OK;
     bound = (Py68BoundMethod *)method.as.object;
     args[0] = bound->self;
-    passed &= py68_native_call(bound->function, &runtime, 1, args, &result) ==
+    passed &= py68_native_call((Py68NativeFunction *)bound->callable, &runtime, 1, args, &result) ==
               PY68_STATUS_OK;
     passed &= expect_string(result, "ABC");
     py68_value_release(&runtime, result);
@@ -58,7 +58,7 @@ int main(void)
         args[0] = bound->self;
         args[1] = py68_value_from_object(&sub->base);
         passed &=
-            py68_native_call(bound->function, &runtime, 2, args, &result) ==
+            py68_native_call((Py68NativeFunction *)bound->callable, &runtime, 2, args, &result) ==
             PY68_STATUS_OK;
         passed &= result.type == PY68_VALUE_INT && result.as.integer == 1;
         py68_value_release(&runtime, args[1]);

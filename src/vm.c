@@ -19,6 +19,7 @@
 #include "py68k_generator.h"
 #include "py68k_import.h"
 #include "py68k_module.h"
+#include "py68k_type.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -320,10 +321,21 @@ static int py68_vm_catch(Py68Runtime *runtime, Py68Code **current_code,
     Py68Frame *frame;
     if (!py68_error_is_catchable(runtime->error.kind))
         return 0;
-    if (py68_exception_from_error(runtime, &exception) != PY68_STATUS_OK)
-        return 0;
-    py68_value_release(runtime, runtime->current_exception);
-    runtime->current_exception = py68_value_from_object(&exception->base);
+    /* Prefer an exception already installed by OP_RAISE / type call so user
+       exception type pointers survive catch (Level 0.8). Only reuse when the
+       kind matches the pending error — a prior except must not sticky-reuse. */
+    if (runtime->current_exception.type == PY68_VALUE_OBJECT &&
+        runtime->current_exception.as.object != NULL &&
+        runtime->current_exception.as.object->type == PY68_OBJECT_EXCEPTION &&
+        ((Py68Exception *)runtime->current_exception.as.object)->kind ==
+            runtime->error.kind) {
+        exception = (Py68Exception *)runtime->current_exception.as.object;
+    } else {
+        if (py68_exception_from_error(runtime, &exception) != PY68_STATUS_OK)
+            return 0;
+        py68_value_release(runtime, runtime->current_exception);
+        runtime->current_exception = py68_value_from_object(&exception->base);
+    }
     while (runtime->frame_count != 0) {
         frame = &runtime->frames[runtime->frame_count - 1];
         if (frame->try_count != 0) {
@@ -1520,18 +1532,176 @@ static Py68Status py68_vm_run(Py68Runtime *runtime, Py68Code *code,
                 Py68Value bound_args[8];
                 Py68U16 bound_count = (Py68U16)(argument_count + 1);
                 Py68U16 copy_index;
-                if (bound_count > 8) {
+                if (method->callable == NULL) {
+                    py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                  "bound method has no callable");
+                    status = PY68_STATUS_RUNTIME_ERROR;
+                } else if (bound_count > 8) {
                     py68_vm_error(runtime, PY68_ERROR_TYPE,
                                   "too many bound-method arguments");
                     status = PY68_STATUS_RUNTIME_ERROR;
-                } else {
+                } else if (method->callable->type ==
+                           PY68_OBJECT_NATIVE_FUNCTION) {
                     bound_args[0] = method->self;
                     for (copy_index = 0; copy_index < argument_count;
                          ++copy_index)
                         bound_args[copy_index + 1] = arguments[copy_index];
-                    status = py68_native_call(method->function, runtime,
-                                              bound_count, bound_args,
-                                              &result);
+                    status = py68_native_call(
+                        (Py68NativeFunction *)method->callable, runtime,
+                        bound_count, bound_args, &result);
+                } else if (method->callable->type == PY68_OBJECT_FUNCTION) {
+                    Py68Function *function =
+                        (Py68Function *)method->callable;
+                    Py68Code *callee_code = function->code;
+                    bound_args[0] = method->self;
+                    for (copy_index = 0; copy_index < argument_count;
+                         ++copy_index)
+                        bound_args[copy_index + 1] = arguments[copy_index];
+                    status = py68_function_check_arguments(function,
+                                                           bound_count);
+                    if (status != PY68_STATUS_OK)
+                        py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                      "function called with the wrong "
+                                      "number of arguments");
+                    if (status == PY68_STATUS_OK)
+                        status = py68_verify_code(callee_code, &runtime->error);
+                    if (status == PY68_STATUS_OK)
+                        status = py68_frame_push(
+                            runtime, callee_code, current_code,
+                            function->local_count, bound_count, bound_args,
+                            ip + 2, function->globals_owner);
+                    if (status == PY68_STATUS_OK) {
+                        runtime->value_stack_count = (Py68U16)(
+                            runtime->value_stack_count - argument_count - 1);
+                        py68_value_release(runtime, callee);
+                        while (argument_count != 0) {
+                            --argument_count;
+                            py68_value_release(runtime,
+                                               arguments[argument_count]);
+                        }
+                        current_code = callee_code;
+                        ip = 0;
+                    }
+                    break;
+                } else {
+                    py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                  "unsupported bound method");
+                    status = PY68_STATUS_RUNTIME_ERROR;
+                }
+            } else if (callee.as.object->type == PY68_OBJECT_TYPE) {
+                Py68Type *type = (Py68Type *)callee.as.object;
+                if (type == runtime->type_type) {
+                    if (argument_count != 1) {
+                        py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                      "type() takes exactly 1 argument");
+                        status = PY68_STATUS_RUNTIME_ERROR;
+                    } else {
+                        status = py68_type_of_value(runtime, arguments[0],
+                                                    &result);
+                    }
+                } else if ((type->flags & PY68_TYPE_FLAG_EXCEPTION) != 0) {
+                    status = py68_type_call_as_exception(
+                        runtime, type, argument_count, arguments, &result);
+                } else {
+                    Py68Instance *instance;
+                    Py68Value init_value;
+                    int found = 0;
+                    status = py68_instance_new(runtime, type, &instance);
+                    if (status != PY68_STATUS_OK) {
+                        py68_vm_error(runtime, PY68_ERROR_MEMORY,
+                                      "instance allocation failed");
+                    } else {
+                        status = py68_type_lookup(
+                            runtime, type, (const Py68U8 *)"__init__", 8,
+                            &init_value, &found);
+                        if (status != PY68_STATUS_OK) {
+                            py68_object_release(runtime, &instance->base);
+                        } else if (!found) {
+                            if (argument_count != 0) {
+                                py68_object_release(runtime, &instance->base);
+                                py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                              "object() takes no arguments");
+                                status = PY68_STATUS_RUNTIME_ERROR;
+                            } else {
+                                result = py68_value_from_object(
+                                    &instance->base);
+                                status = PY68_STATUS_OK;
+                            }
+                        } else if (init_value.type == PY68_VALUE_OBJECT &&
+                                   init_value.as.object != NULL &&
+                                   init_value.as.object->type ==
+                                       PY68_OBJECT_FUNCTION) {
+                            Py68Function *function =
+                                (Py68Function *)init_value.as.object;
+                            Py68Code *callee_code = function->code;
+                            Py68Value bound_args[8];
+                            Py68U16 bound_count =
+                                (Py68U16)(argument_count + 1);
+                            Py68U16 copy_index;
+                            if (bound_count > 8) {
+                                py68_value_release(runtime, init_value);
+                                py68_object_release(runtime, &instance->base);
+                                py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                              "too many __init__ arguments");
+                                status = PY68_STATUS_RUNTIME_ERROR;
+                            } else {
+                                bound_args[0] = py68_value_from_object(
+                                    &instance->base);
+                                for (copy_index = 0;
+                                     copy_index < argument_count;
+                                     ++copy_index)
+                                    bound_args[copy_index + 1] =
+                                        arguments[copy_index];
+                                status = py68_function_check_arguments(
+                                    function, bound_count);
+                                if (status != PY68_STATUS_OK)
+                                    py68_vm_error(
+                                        runtime, PY68_ERROR_TYPE,
+                                        "function called with the wrong "
+                                        "number of arguments");
+                                if (status == PY68_STATUS_OK)
+                                    status = py68_verify_code(
+                                        callee_code, &runtime->error);
+                                if (status == PY68_STATUS_OK)
+                                    status = py68_frame_push(
+                                        runtime, callee_code, current_code,
+                                        function->local_count, bound_count,
+                                        bound_args, ip + 2,
+                                        function->globals_owner);
+                                if (status == PY68_STATUS_OK) {
+                                    runtime->frames[runtime->frame_count - 1]
+                                        .constructing =
+                                        py68_value_from_object(
+                                            &instance->base);
+                                    py68_object_retain(&instance->base);
+                                    runtime->value_stack_count = (Py68U16)(
+                                        runtime->value_stack_count -
+                                        argument_count - 1);
+                                    py68_value_release(runtime, callee);
+                                    py68_value_release(runtime, init_value);
+                                    py68_object_release(runtime,
+                                                        &instance->base);
+                                    while (argument_count != 0) {
+                                        --argument_count;
+                                        py68_value_release(
+                                            runtime,
+                                            arguments[argument_count]);
+                                    }
+                                    current_code = callee_code;
+                                    ip = 0;
+                                    break;
+                                }
+                                py68_value_release(runtime, init_value);
+                                py68_object_release(runtime, &instance->base);
+                            }
+                        } else {
+                            py68_value_release(runtime, init_value);
+                            py68_object_release(runtime, &instance->base);
+                            py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                          "__init__ must be a function");
+                            status = PY68_STATUS_RUNTIME_ERROR;
+                        }
+                    }
                 }
             } else {
                 py68_vm_error(runtime, PY68_ERROR_TYPE, "unsupported callable");
@@ -1728,6 +1898,24 @@ static Py68Status py68_vm_run(Py68Runtime *runtime, Py68Code *code,
             }
             caller_code = runtime->frames[runtime->frame_count - 1].return_code;
             caller_ip = runtime->frames[runtime->frame_count - 1].return_ip;
+            if (runtime->frames[runtime->frame_count - 1].constructing.type ==
+                PY68_VALUE_OBJECT) {
+                Py68Value constructed =
+                    runtime->frames[runtime->frame_count - 1].constructing;
+                runtime->frames[runtime->frame_count - 1].constructing =
+                    py68_value_none();
+                if (return_value.type != PY68_VALUE_NONE) {
+                    py68_value_release(runtime, return_value);
+                    py68_value_release(runtime, constructed);
+                    py68_frame_pop(runtime);
+                    py68_vm_error(runtime, PY68_ERROR_TYPE,
+                                  "__init__() should return None");
+                    status = PY68_STATUS_RUNTIME_ERROR;
+                    break;
+                }
+                py68_value_release(runtime, return_value);
+                return_value = constructed;
+            }
             py68_frame_pop(runtime);
             current_code = caller_code;
             ip = caller_ip;
@@ -2054,6 +2242,19 @@ static Py68Status py68_vm_run(Py68Runtime *runtime, Py68Code *code,
                 py68_object_retain(&exception->base);
             } else if (raised.type == PY68_VALUE_OBJECT &&
                        raised.as.object != NULL &&
+                       raised.as.object->type == PY68_OBJECT_TYPE &&
+                       (((Py68Type *)raised.as.object)->flags &
+                        PY68_TYPE_FLAG_EXCEPTION) != 0) {
+                Py68Type *type = (Py68Type *)raised.as.object;
+                Py68Value constructed;
+                status = py68_type_call_as_exception(runtime, type, 0, NULL,
+                                                     &constructed);
+                py68_value_release(runtime, raised);
+                if (status != PY68_STATUS_OK) break;
+                raised = constructed;
+                exception = (Py68Exception *)raised.as.object;
+            } else if (raised.type == PY68_VALUE_OBJECT &&
+                       raised.as.object != NULL &&
                        raised.as.object->type == PY68_OBJECT_NATIVE_FUNCTION &&
                        raised.as.object->flags != 0) {
                 status = py68_exception_new(
@@ -2097,7 +2298,8 @@ static Py68Status py68_vm_run(Py68Runtime *runtime, Py68Code *code,
                                      current_code->bytecode[ip + 2]);
             if (pending.type == PY68_VALUE_OBJECT && pending.as.object != NULL &&
                 pending.as.object->type == PY68_OBJECT_EXCEPTION &&
-                py68_exception_matches((Py68Exception *)pending.as.object,
+                py68_exception_matches(runtime,
+                                       (Py68Exception *)pending.as.object,
                                        matcher)) {
                 ip += 3;
             } else {

@@ -490,6 +490,11 @@ static Py68Status py68_collect_statements(Py68Allocator *allocator,
                               statement->location,
                               "nested functions are not supported");
             return PY68_STATUS_SOURCE_ERROR;
+        case PY68_AST_CLASS_DEF:
+            py68_symbol_error(error, PY68_ERROR_SYNTAX, source,
+                              statement->location,
+                              "class inside function is not supported");
+            return PY68_STATUS_SOURCE_ERROR;
         case PY68_AST_RETURN:
         case PY68_AST_YIELD:
             status = py68_collect_expression(allocator, source, function,
@@ -613,6 +618,46 @@ static Py68Status py68_analyze_statement(Py68Allocator *allocator,
         }
         return py68_collect_statements(allocator, source, function,
                                        &statement->as.function_def.body, error);
+    }
+    if (statement->kind == PY68_AST_CLASS_DEF) {
+        status = py68_add_global(allocator, source, analysis,
+                                 statement->as.class_def.name_offset,
+                                 statement->as.class_def.name_length);
+        if (status != PY68_STATUS_OK) return status;
+        for (index = 0; index < statement->as.class_def.body.count; ++index) {
+            Py68AstNode *body_stmt = statement->as.class_def.body.items[index];
+            if (body_stmt->kind == PY68_AST_PASS)
+                continue;
+            if (body_stmt->kind == PY68_AST_ASSIGN)
+                continue;
+            if (body_stmt->kind != PY68_AST_FUNCTION_DEF) {
+                py68_symbol_error(error, PY68_ERROR_SYNTAX, source,
+                                  body_stmt->location,
+                                  "class body only allows pass, assignment, and def");
+                return PY68_STATUS_SOURCE_ERROR;
+            }
+            /* Method names live in the class namespace, not module globals. */
+            status = py68_add_function(allocator, analysis, body_stmt,
+                                       &function);
+            if (status != PY68_STATUS_OK) return status;
+            {
+                Py68U16 param_index;
+                for (param_index = 0;
+                     param_index < body_stmt->as.function_def.parameters.count;
+                     ++param_index) {
+                    status = py68_add_parameter(
+                        allocator, source, function,
+                        body_stmt->as.function_def.parameters.items[param_index],
+                        error);
+                    if (status != PY68_STATUS_OK) return status;
+                }
+            }
+            status = py68_collect_statements(
+                allocator, source, function,
+                &body_stmt->as.function_def.body, error);
+            if (status != PY68_STATUS_OK) return status;
+        }
+        return PY68_STATUS_OK;
     }
     if (statement->kind == PY68_AST_ASSIGN) {
         if (statement->as.assign.target != NULL &&

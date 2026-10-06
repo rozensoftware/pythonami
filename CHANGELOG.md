@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0
+
+- Language Level 0.8: classes and instances with single inheritance.
+  `class Name:` / `class Name(Base):` at module level; restricted class body
+  (`pass`, simple assignment, `def`); per-instance `__dict__`; `__init__`;
+  bound user methods; `isinstance` / `issubclass` / `object` / `type(obj)`.
+- Builtin exceptions are real type objects under `BaseException` /
+  `Exception`. `except Exception` matches by single-inheritance subtype.
+  Internal `Py68ErrorKind` tags remain for C raise paths and logging; user
+  exception subclasses use catchable `PY68_ERROR_EXCEPTION` plus a type
+  pointer (D-0049, D-0050).
+- `__build_class__` builtin builds types from a namespace dict.
+- Multiple inheritance, metaclasses, descriptors, `super()`, operator
+  dunders, nested classes, and closures remain out of scope.
+
 ## 0.7.2
 
 - Extension ABI (D-0048): `Py68ExtServices` on `Py68Runtime` lets LoadSeg

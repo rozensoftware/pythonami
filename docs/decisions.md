@@ -1,5 +1,39 @@
 # Decisions
 
+## D-0050: Exception types with kind-tag bridge
+
+- Context: Level 0.4 matched `except` by comparing `Py68ErrorKind` to native
+	stub flags (D-0017). Level 0.8 needs `except Exception` and user
+	`class E(Exception)` to follow single-inheritance subtype rules without
+	rewriting every `py68_vm_error` call site.
+- Decision: Builtin exceptions are `Py68Type` objects under `BaseException` /
+	`Exception`, each carrying `exception_kind`. Exception instances keep a
+	kind tag and a retained `type` pointer. Matching uses
+	`py68_type_is_subtype`. C raise paths still set a kind; `exception_from_error`
+	attaches the mapped builtin type. User exception subclasses use catchable
+	`PY68_ERROR_EXCEPTION` plus their type pointer. `OP_RAISE` reuses
+	`current_exception` in `py68_vm_catch` so the type pointer is not rebuilt
+	away. `IOError` remains an alias of the `OSError` type object (D-0044).
+- Alternatives considered: Drop kind tags entirely; keep kind-only matching.
+- Consequences: `except Exception` catches `ValueError` and user subclasses.
+	Uncatchable errors (syntax/bytecode/memory/internal/interrupt) stay outside
+	the user hierarchy.
+
+## D-0049: Single-inheritance classes with instance `__dict__`
+
+- Context: Level 0.7 had no user classes; attributes were a static per-type
+	native method table (D-0014). Amiga RAM and M68000 complexity rule out
+	multiple inheritance and full descriptors for the first OOP milestone.
+- Decision: Language Level 0.8 adds `Py68Type` / `Py68Instance`, module-level
+	`class Name[(Base)]:`, restricted bodies (`pass` / simple assign / `def`),
+	`__build_class__(ns, name[, base])`, per-instance `__dict__`, `__init__`,
+	bound user methods, and `isinstance`/`issubclass` via a single `base_type`
+	chain. Builtin container method tables remain for list/str/….
+- Alternatives considered: Slots-only instances; multiple inheritance/C3;
+	compile-time-only classes without runtime type objects.
+- Consequences: Higher per-instance RAM from `__dict__`. No `super()`,
+	metaclasses, MI, or operator dunders in 0.8.
+
 ## D-0047: Builtins consume a generator through a VM-driven collect frame
 
 - Context: `sum(x * x for x in range(10))` and `list(gen())` are the ordinary
