@@ -4,12 +4,12 @@
 ; or double-click Install after Protect Install +s
 ;
 ; Installs:
-;   SYS:pythonami/pythonami   — Hunk executable
-;   SYS:pythonami/lib/        — stdlib (.py modules)
+;   SYS:Python68k/pythonami   — Hunk executable
+;   SYS:Python68k/lib/        — stdlib (.py modules)
 ;
 ; Session setup (current boot):
-;   Assign pythonami_lib: SYS:pythonami/lib
-;   Path SYS:pythonami ADD
+;   Assign pythonami_lib: SYS:Python68k/lib
+;   Path SYS:Python68k ADD
 ;
 ; Permanence: append the same Assign/Path lines to S:User-Startup.
 
@@ -28,29 +28,30 @@ IF NOT EXISTS lib
   QUIT 20
 ENDIF
 
-echo "Creating SYS:pythonami"
-IF NOT EXISTS SYS:pythonami
-  makedir SYS:pythonami
+echo "Creating SYS:Python68k"
+IF NOT EXISTS SYS:Python68k
+  makedir SYS:Python68k
 ENDIF
 
-echo "Copying pythonami -> SYS:pythonami/"
-copy pythonami SYS:pythonami/
+echo "Copying pythonami -> SYS:Python68k/"
+copy pythonami SYS:Python68k/
+copy Uninstall SYS:Python68k/
 
-echo "Copying lib -> SYS:pythonami/lib"
-copy lib SYS:pythonami/lib ALL
+echo "Copying lib -> SYS:Python68k/lib"
+copy lib SYS:Python68k/lib ALL
 
-echo "Assign pythonami_lib: SYS:pythonami/lib"
-Assign pythonami_lib: SYS:pythonami/lib
+echo "Assign pythonami_lib: SYS:Python68k/lib"
+Assign pythonami_lib: SYS:Python68k/lib
 
-echo "Path SYS:pythonami ADD"
-Path SYS:pythonami ADD
+echo "Path SYS:Python68k ADD"
+Path SYS:Python68k ADD
 
 echo ""
 echo "Installation complete for this session."
 echo ""
 echo "For permanence, add these lines to S:User-Startup:"
-echo "  Assign pythonami_lib: SYS:pythonami/lib"
-echo "  Path SYS:pythonami ADD"
+echo "  Assign pythonami_lib: SYS:Python68k/lib"
+echo "  Path SYS:Python68k ADD"
 echo ""
 echo "Then you can run from any Shell:"
 echo "  pythonami script.py"
@@ -61,4 +62,4 @@ echo "  import sys"
 echo "  sys.path.append('pythonami_lib:')"
 echo "  import random"
 echo ""
-echo "Or: sys.path.append('SYS:pythonami/lib')"
+echo "Or: sys.path.append('SYS:Python68k/lib')"

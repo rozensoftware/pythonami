@@ -1,0 +1,58 @@
+; Python68k pythonami Uninstall
+; Run from an AmigaDOS Shell:
+;   execute Uninstall
+;
+; Removes SYS:Python68k/pythonami and the complete SYS:Python68k/lib drawer.
+; Other files in SYS:Python68k are left untouched.
+
+echo "pythonami Uninstall"
+echo "-------------------"
+
+IF NOT EXISTS SYS:Python68k
+  echo "Error: SYS:Python68k was not found."
+  QUIT 20
+ENDIF
+
+Ask "Remove pythonami and its complete SYS:Python68k/lib drawer? (Y/N)"
+IF NOT WARN
+  echo "Uninstall cancelled."
+  QUIT 20
+ENDIF
+
+echo "Removing current-session Assign and Path entries"
+Assign pythonami_lib: REMOVE
+Path SYS:Python68k REMOVE
+
+IF EXISTS SYS:Python68k/pythonami
+  echo "Deleting SYS:Python68k/pythonami"
+  Delete SYS:Python68k/pythonami
+  IF ERROR
+    echo "Error: could not delete SYS:Python68k/pythonami."
+    QUIT 20
+  ENDIF
+ENDIF
+
+IF EXISTS SYS:Python68k/lib
+  echo "Deleting SYS:Python68k/lib and its contents"
+  Delete SYS:Python68k/lib ALL
+  IF ERROR
+    echo "Error: could not delete SYS:Python68k/lib."
+    QUIT 20
+  ENDIF
+ENDIF
+
+; Delete the install drawer only if it is now empty.
+Delete SYS:Python68k
+IF ERROR
+  echo "The runtime was removed, but SYS:Python68k remains because it is not empty."
+ELSE
+  echo "Removed empty SYS:Python68k drawer."
+ENDIF
+
+echo ""
+echo "Uninstall complete for this session."
+echo "If added, remove these lines from S:User-Startup:"
+echo "  Assign pythonami_lib: SYS:Python68k/lib"
+echo "  Path SYS:Python68k ADD"
+echo ""
+echo "Any other files in SYS:Python68k were left untouched."
