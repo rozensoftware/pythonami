@@ -10,6 +10,10 @@
   `gui_intuition` (progress + label/enable/redraw) and new `ext/asl`
   (`ask_drawer`). Doc: [docs/amiga-gui-installer.md](docs/amiga-gui-installer.md).
   Host check: `examples/test_install_ami.py`.
+- **AmigaDOS runtime install scripts:** `scripts/Install` now installs under
+  `SYS:Python68k` and copies `scripts/Uninstall`. Uninstall removes the runtime,
+  its `lib` drawer, and current-session Assign/Path entries; manually added
+  `S:User-Startup` lines must still be removed by the user.
 
 ## 0.8.0
 

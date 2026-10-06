@@ -145,6 +145,25 @@
 - [x] Exit-code mapping
 - [ ] Memory stats output
 
+## Phase 13 - Comprehensions (Language Level 0.6)
+- [x] List, set, and dict comprehension parsing and compilation
+- [x] Nested clauses and filters
+- [x] Comprehension target binding covered by host fixtures
+- [x] Host comprehension language fixture passes (`make language-test`)
+
+## Phase 14 - Generators (Language Level 0.7)
+- [x] `yield` statement and lazy generator creation
+- [x] Generator expression compilation and free-variable behavior
+- [x] Supported builtins consume generators through VM execution
+- [x] Host generator language fixtures pass (`make language-test`)
+
+## Phase 15 - Classes and exception types (Language Level 0.8)
+- [x] User type and instance runtime
+- [x] Single inheritance, instance attributes, and bound methods
+- [x] Restricted module-level class suite compilation
+- [x] Builtin exception type hierarchy and user exception subclasses
+- [x] Host class/exception language fixture passes (`make language-test`)
+
 ## Quality Gates
 - [x] No memory leaks (full `make test` suite run under ASan/UBSan, zero findings)
 - [x] All unit tests pass
@@ -173,5 +192,5 @@
 - [ ] Documentation complete
 - [ ] Language Level 0.1 frozen
 
-## Future / post-0.6
+## Future / post-0.8
 - [ ] CPython-style `open` (option 1): `open()` + `file.read()`/`write()`/`close()`, limited keyword args for `encoding='utf-8'` (accept/ignore), `FileNotFoundError`, keep `fopen` as alias; driver: `examples/wordcount.py`

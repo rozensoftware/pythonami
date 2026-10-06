@@ -3,11 +3,6 @@
 HD-oriented installer that extracts an LHA, writes `uninstall.ami`, and can
 append Assign/Path markers to `S:User-Startup`.
 
-## Branches
-
-Develop on `feature/amiga-gui-installer` in both **pythonami** and
-**highamigaassembler** (not `master`).
-
 ## Package format
 
 Inside the LHA root: `install.ami` (`KEY=VALUE`). Required: `NAME`, `START`,
@@ -40,6 +35,14 @@ pythonami examples/installer/installer.py
 ```
 
 Requires `lha` on PATH and write access to the chosen HD drawer.
+
+## Runtime package shell scripts
+
+The separate AmigaDOS scripts in `scripts/Install` and `scripts/Uninstall`
+install the `pythonami` executable and `lib/` under `SYS:Python68k`, then
+configure the current-session Assign and command Path. `Uninstall` removes the
+runtime and `lib/` and clears those current-session entries. It does not edit
+`S:User-Startup`; remove any persistent Assign/Path lines there manually.
 
 ## Related HAS docs
 

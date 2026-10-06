@@ -107,7 +107,7 @@ see `docs/amiga-extensions.md`. Host has no `load_library`.
 - Error reporting with frame traceback
 
 ### Not in 0.8.0
-Multiple inheritance, metaclasses, `super()`, descriptors, operator dunders, Unicode, bytes, generator `send` / `throw` / `close()` / `yield from`, closures, nested `def` outside methods, method-style `open()` / `file.read()` / keyword `encoding=` / `FileNotFoundError` (post-0.6 option 1; `fopen` remains), seek, relative imports, `from x import *`, Amiga `ENV:` GetVar/SetVar, frozen emulator/hardware differential sign-off.
+Multiple inheritance, metaclasses, `super()`, descriptors, operator dunders, Unicode, bytes, generator `send` / `throw` / `close()` / `yield from`, closures, nested `def` outside methods, method-style `open()` / `file.read()` / keyword `encoding=` / `FileNotFoundError` (planned beyond 0.8; `fopen` remains), seek, relative imports, `from x import *`, Amiga `ENV:` GetVar/SetVar, frozen emulator/hardware differential sign-off.
 
 ---
 
