@@ -11,5 +11,5 @@
 _py68_ext_header:
         dc.l    $50593638           ; PY68_EXT_MAGIC 'PY68'
         dc.w    1                   ; PY68_EXT_ABI_VERSION
-        dc.w    20                  ; export_count (must match table)
+        dc.w    25                  ; export_count (must match table)
         dc.l    _gui_intuition_exports
