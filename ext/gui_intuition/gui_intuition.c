@@ -105,6 +105,7 @@ static void gui_strcat(char *dst, const char *src)
 #define GUI_WIDGET_LIST 2
 #define GUI_WIDGET_BITMAP 3
 #define GUI_WIDGET_EDIT 4
+#define GUI_WIDGET_PROGRESS 5
 
 struct ExecBase *SysBase;
 struct IntuitionBase *IntuitionBase;
@@ -132,6 +133,7 @@ static char s_edit_undo[GUI_MAX_GADGETS][GUI_MAX_EDIT_LEN];
 static UWORD s_widget_kind[GUI_MAX_GADGETS];
 static UWORD s_list_selected[GUI_MAX_GADGETS];
 static UWORD s_list_rows[GUI_MAX_GADGETS];
+static UWORD s_progress_pct[GUI_MAX_GADGETS];
 static char s_captions[GUI_MAX_GADGETS][64];
 static UWORD s_gadget_count;
 
@@ -305,6 +307,58 @@ static void draw_labels(void)
     for (i = 0; i < s_label_count; ++i) {
         PrintIText(s_rport, &s_labels[i], s_label_xy[i][0], s_label_xy[i][1]);
     }
+}
+
+static void draw_progress_bars(void)
+{
+    UWORD i;
+    if (s_rport == 0 || GfxBase == 0)
+        return;
+    for (i = 0; i < s_gadget_count; ++i) {
+        struct Gadget *g;
+        WORD x0, y0, x1, y1;
+        WORD fill_w;
+        UWORD pct;
+        if (s_widget_kind[i] != GUI_WIDGET_PROGRESS)
+            continue;
+        g = &s_gadgets[i];
+        pct = s_progress_pct[i];
+        if (pct > 100)
+            pct = 100;
+        x0 = (WORD)(g->LeftEdge + 2);
+        y0 = (WORD)(g->TopEdge + 2);
+        x1 = (WORD)(g->LeftEdge + g->Width - 3);
+        y1 = (WORD)(g->TopEdge + g->Height - 3);
+        if (x1 < x0 || y1 < y0)
+            continue;
+        SetAPen(s_rport, 0);
+        RectFill(s_rport, x0, y0, x1, y1);
+        if (pct == 0)
+            continue;
+        {
+            WORD maxw = (WORD)(g->Width - 4);
+            ULONG acc = (ULONG)maxw * (ULONG)pct;
+            fill_w = 0;
+            while (acc >= 100UL) {
+                acc -= 100UL;
+                ++fill_w;
+            }
+        }
+        if (fill_w <= 0)
+            continue;
+        SetAPen(s_rport, 2);
+        RectFill(s_rport, x0, y0, (WORD)(x0 + fill_w - 1), y1);
+    }
+}
+
+static void gui_full_redraw(void)
+{
+    if (s_window == 0 || s_rport == 0 || IntuitionBase == 0)
+        return;
+    if (s_gadget_count != 0 && s_nw.FirstGadget != 0)
+        RefreshGList(s_nw.FirstGadget, s_window, 0, -1);
+    draw_progress_bars();
+    draw_labels();
 }
 
 static LONG find_gadget_slot(struct Gadget *g)
@@ -753,6 +807,50 @@ static Py68Status gui_add_bitmap(Py68Runtime *runtime, Py68U16 argc, Py68Value *
     return PY68_STATUS_OK;
 }
 
+static Py68Status gui_add_progress(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
+                                   Py68Value *result)
+{
+    Py68I32 id, x, y, w, h, percent;
+    UWORD slot;
+    struct Gadget *g;
+    (void)runtime;
+    (void)argc;
+    if (!s_begun || s_shown || s_gadget_count >= GUI_MAX_GADGETS) {
+        *result = py68_ext_value_int(-1);
+        return PY68_STATUS_OK;
+    }
+    if (!require_int(args[0], &id) || !require_int(args[1], &x) ||
+        !require_int(args[2], &y) || !require_int(args[3], &w) ||
+        !require_int(args[4], &h) || !require_int(args[5], &percent)) {
+        *result = py68_ext_value_int(-1);
+        return PY68_STATUS_OK;
+    }
+    if (percent < 0)
+        percent = 0;
+    if (percent > 100)
+        percent = 100;
+    slot = s_gadget_count;
+    g = &s_gadgets[slot];
+    gui_memset(g, 0, sizeof(*g));
+    fill_button_border(slot, (WORD)w, (WORD)h);
+    g->LeftEdge = (WORD)x;
+    g->TopEdge = (WORD)y;
+    g->Width = (WORD)w;
+    g->Height = (WORD)h;
+    g->Flags = GFLG_GADGHNONE;
+    g->Activation = GACT_RELVERIFY;
+    g->GadgetType = GTYP_BOOLGADGET;
+    g->GadgetRender = (APTR)&s_borders[slot * 2];
+    g->GadgetText = 0;
+    g->GadgetID = (UWORD)id;
+    s_widget_kind[slot] = GUI_WIDGET_PROGRESS;
+    s_progress_pct[slot] = (UWORD)percent;
+    link_gadget(g);
+    ++s_gadget_count;
+    *result = py68_ext_value_int(0);
+    return PY68_STATUS_OK;
+}
+
 static Py68Status gui_show(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
                            Py68Value *result)
 {
@@ -775,6 +873,7 @@ static Py68Status gui_show(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
     else
         s_sigmask = 0;
     draw_labels();
+    draw_progress_bars();
     s_shown = 1;
     *result = py68_ext_value_int((Py68I32)(ULONG)s_window);
     return PY68_STATUS_OK;
@@ -845,7 +944,8 @@ static Py68Status gui_wait_event(Py68Runtime *runtime, Py68U16 argc, Py68Value *
                                 row = (WORD)(s_list_rows[slot] - 1);
                             s_list_selected[slot] = (UWORD)row;
                             evt = GUI_EVT_LIST;
-                        } else if (s_widget_kind[slot] == GUI_WIDGET_BITMAP)
+                        } else if (s_widget_kind[slot] == GUI_WIDGET_BITMAP ||
+                                   s_widget_kind[slot] == GUI_WIDGET_PROGRESS)
                             evt = GUI_EVT_NONE;
                         else {
                             button_render(g, 0); /* release: raised bevel */
@@ -867,6 +967,7 @@ static Py68Status gui_wait_event(Py68Runtime *runtime, Py68U16 argc, Py68Value *
             evt = GUI_EVT_MOUSE;
         } else if (class_bits & IDCMP_REFRESHWINDOW) {
             BeginRefresh(s_window);
+            draw_progress_bars();
             draw_labels();
             EndRefresh(s_window, TRUE);
             evt = GUI_EVT_REFRESH;
@@ -1029,7 +1130,102 @@ static Py68Status gui_get_list_selected(Py68Runtime *runtime, Py68U16 argc,
     return PY68_STATUS_OK;
 }
 
-const Py68ExtExport gui_intuition_exports[20] = {
+static Py68Status gui_set_progress(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
+                                   Py68Value *result)
+{
+    Py68I32 id, percent;
+    UWORD i;
+    (void)runtime;
+    (void)argc;
+    if (!require_int(args[0], &id) || !require_int(args[1], &percent)) {
+        *result = py68_ext_value_int(-1);
+        return PY68_STATUS_OK;
+    }
+    if (percent < 0)
+        percent = 0;
+    if (percent > 100)
+        percent = 100;
+    for (i = 0; i < s_gadget_count; ++i) {
+        if (s_gadgets[i].GadgetID == (UWORD)id &&
+            s_widget_kind[i] == GUI_WIDGET_PROGRESS) {
+            s_progress_pct[i] = (UWORD)percent;
+            if (s_shown)
+                draw_progress_bars();
+            *result = py68_ext_value_int(0);
+            return PY68_STATUS_OK;
+        }
+    }
+    *result = py68_ext_value_int(-1);
+    return PY68_STATUS_OK;
+}
+
+static Py68Status gui_set_label_text(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
+                                     Py68Value *result)
+{
+    Py68I32 id;
+    UWORD i;
+    (void)argc;
+    if (!require_int(args[0], &id)) {
+        *result = py68_ext_value_int(-1);
+        return PY68_STATUS_OK;
+    }
+    for (i = 0; i < s_label_count; ++i) {
+        if (s_label_ids[i] == (UWORD)id) {
+            if (!borrow_cstr(runtime, args[1], s_label_text[i],
+                             sizeof(s_label_text[i]))) {
+                *result = py68_ext_value_int(-1);
+                return PY68_STATUS_OK;
+            }
+            s_labels[i].IText = s_label_text[i];
+            if (s_shown)
+                draw_labels();
+            *result = py68_ext_value_int(0);
+            return PY68_STATUS_OK;
+        }
+    }
+    *result = py68_ext_value_int(-1);
+    return PY68_STATUS_OK;
+}
+
+static Py68Status gui_enable_widget(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
+                                    Py68Value *result)
+{
+    Py68I32 id, enable;
+    UWORD i;
+    (void)runtime;
+    (void)argc;
+    if (!require_int(args[0], &id) || !require_int(args[1], &enable)) {
+        *result = py68_ext_value_int(-1);
+        return PY68_STATUS_OK;
+    }
+    for (i = 0; i < s_gadget_count; ++i) {
+        if (s_gadgets[i].GadgetID == (UWORD)id) {
+            if (enable)
+                s_gadgets[i].Flags = (UWORD)(s_gadgets[i].Flags & ~GFLG_DISABLED);
+            else
+                s_gadgets[i].Flags = (UWORD)(s_gadgets[i].Flags | GFLG_DISABLED);
+            if (s_shown && s_window != 0)
+                RefreshGList(&s_gadgets[i], s_window, 0, 1);
+            *result = py68_ext_value_int(0);
+            return PY68_STATUS_OK;
+        }
+    }
+    *result = py68_ext_value_int(-1);
+    return PY68_STATUS_OK;
+}
+
+static Py68Status gui_redraw(Py68Runtime *runtime, Py68U16 argc, Py68Value *args,
+                             Py68Value *result)
+{
+    (void)runtime;
+    (void)argc;
+    (void)args;
+    gui_full_redraw();
+    *result = py68_ext_value_none();
+    return PY68_STATUS_OK;
+}
+
+const Py68ExtExport gui_intuition_exports[25] = {
     { "init", 0, 0, gui_init },
     { "shutdown", 0, 0, gui_shutdown },
     { "begin_window", 7, 7, gui_begin_window },
@@ -1039,6 +1235,7 @@ const Py68ExtExport gui_intuition_exports[20] = {
     { "add_checkbox", 7, 7, gui_add_checkbox },
     { "add_list", 7, 7, gui_add_list },
     { "add_bitmap", 6, 6, gui_add_bitmap },
+    { "add_progress", 6, 6, gui_add_progress },
     { "show", 0, 0, gui_show },
     { "close_window", 0, 0, gui_close_window },
     { "wait_event", 0, 0, gui_wait_event },
@@ -1049,5 +1246,9 @@ const Py68ExtExport gui_intuition_exports[20] = {
     { "get_edit_text", 1, 1, gui_get_edit_text },
     { "set_edit_text", 2, 2, gui_set_edit_text },
     { "get_checkbox", 1, 1, gui_get_checkbox },
-    { "get_list_selected", 1, 1, gui_get_list_selected }
+    { "get_list_selected", 1, 1, gui_get_list_selected },
+    { "set_progress", 2, 2, gui_set_progress },
+    { "set_label_text", 2, 2, gui_set_label_text },
+    { "enable_widget", 2, 2, gui_enable_widget },
+    { "redraw", 0, 0, gui_redraw }
 };

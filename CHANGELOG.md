@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Amiga GUI installer foundation:** `examples/installer/` plus `lib/install_*.py`
+  (`install.ami` / `uninstall.ami`, LHA extract via `lha`, User-Startup upsert,
+  safe uninstall that opens `ed S:User-Startup`). Plugins: extended
+  `gui_intuition` (progress + label/enable/redraw) and new `ext/asl`
+  (`ask_drawer`). Doc: [docs/amiga-gui-installer.md](docs/amiga-gui-installer.md).
+  Host check: `examples/test_install_ami.py`.
+
 ## 0.8.0
 
 - Language Level 0.8: classes and instances with single inheritance.

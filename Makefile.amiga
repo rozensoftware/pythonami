@@ -22,12 +22,18 @@ EXT_GUI_DIR := ext/gui_intuition
 EXT_GUI_OUT := $(EXT_GUI_DIR)/gui_intuition.py68k
 EXT_GUI_OBJS := $(EXT_GUI_DIR)/gui_intuition_header.o \
 	$(EXT_GUI_DIR)/gui_intuition.o
+
+EXT_ASL_DIR := ext/asl
+EXT_ASL_OUT := $(EXT_ASL_DIR)/asl.py68k
+EXT_ASL_OBJS := $(EXT_ASL_DIR)/asl_header.o \
+	$(EXT_ASL_DIR)/asl.o
+
 EXT_CPPFLAGS := -Iinclude -I$(VBCC_INCLUDE) -I$(NDK)/Include_H -DPY68K_AMIGA=1
 VASMFLAGS := -Fhunk -m68000 -quiet
 # No startup.o / vc.lib — pure LoadSeg plugin hunks (D-0004 / D-0027).
 VLINKFLAGS := -bamigahunk -s
 
-.PHONY: amiga-debug amiga-release amiga-ext ext-demo_add ext-gui_intuition clean
+.PHONY: amiga-debug amiga-release amiga-ext ext-demo_add ext-gui_intuition ext-asl clean
 
 amiga-debug:
 	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_DEBUG) $(CPPFLAGS) $(SOURCES) -o pythonami-debug
@@ -35,11 +41,13 @@ amiga-debug:
 amiga-release:
 	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_RELEASE) $(CPPFLAGS) $(SOURCES) -o pythonami
 
-amiga-ext: ext-demo_add ext-gui_intuition
+amiga-ext: ext-demo_add ext-gui_intuition ext-asl
 
 ext-demo_add: $(EXT_DEMO_OUT)
 
 ext-gui_intuition: $(EXT_GUI_OUT)
+
+ext-asl: $(EXT_ASL_OUT)
 
 $(EXT_DEMO_DIR)/demo_add_header.o: $(EXT_DEMO_DIR)/demo_add_header.s
 	$(VASM) $(VASMFLAGS) -o $@ $<
@@ -62,7 +70,17 @@ $(EXT_GUI_DIR)/gui_intuition.o: $(EXT_GUI_DIR)/gui_intuition.c include/py68k_ext
 $(EXT_GUI_OUT): $(EXT_GUI_OBJS)
 	$(VLINK) $(VLINKFLAGS) -o $@ $(EXT_GUI_OBJS)
 
+$(EXT_ASL_DIR)/asl_header.o: $(EXT_ASL_DIR)/asl_header.s
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+$(EXT_ASL_DIR)/asl.o: $(EXT_ASL_DIR)/asl.c include/py68k_ext.h
+	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_RELEASE) $(EXT_CPPFLAGS) -c -o $@ $(EXT_ASL_DIR)/asl.c
+
+$(EXT_ASL_OUT): $(EXT_ASL_OBJS)
+	$(VLINK) $(VLINKFLAGS) -o $@ $(EXT_ASL_OBJS)
+
 clean:
 	rm -f python python-debug pythonami pythonami-debug
 	rm -f $(EXT_DEMO_OUT) $(EXT_DEMO_OBJS)
 	rm -f $(EXT_GUI_OUT) $(EXT_GUI_OBJS)
+	rm -f $(EXT_ASL_OUT) $(EXT_ASL_OBJS)

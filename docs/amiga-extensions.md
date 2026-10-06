@@ -151,3 +151,11 @@ see `_my_fn` as `my_fn` from C tables.
 Intuition dialogs for guicreator-exported pythonami forms. Contract:
 highamigaassembler `docs/GUI_PYTHONAMI_API.md`. Layer 2 helper:
 `lib/gui_dialog.py`. Owner fixture: `tests/integration/amiga/test_gui_intuition.md`.
+
+Progress / live status exports (installer): `add_progress`, `set_progress`,
+`set_label_text`, `enable_widget`, `redraw`.
+
+## ASL drawer plugin
+
+`make amiga-ext` builds `ext/asl/asl.py68k` with `ask_drawer(title, initial)`.
+Used by `examples/installer/installer.py`. See `docs/amiga-gui-installer.md`.
