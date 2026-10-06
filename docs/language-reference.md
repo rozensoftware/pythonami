@@ -1,6 +1,6 @@
 # Language Reference
 
-Python68K is a restricted Python-compatible language. Language Levels **0.1** (core), **0.2.0** (file/env I/O), **0.3** (types and limited attributes), **0.4** (exceptions and `with`), **0.5** (import/modules), **0.6** (comprehensions), and **0.7** (generators) are executable on the host and Amiga builds.
+Python68K is a restricted Python-compatible language. Language Levels **0.1** (core), **0.2.0** (file/env I/O), **0.3** (types and limited attributes), **0.4** (exceptions and `with`), **0.5** (import/modules), **0.6** (comprehensions), **0.7** (generators), and **0.8** (classes/instances) are executable on the host and Amiga builds.
 
 Symbol analysis classifies names using local, module-global, builtin, and undefined lookup order; parameters occupy the first local slots and later assignment targets use deterministic source order. Referencing a local before assignment is a runtime `NameError`. Empty strings, lists, tuples, dicts, and sets are falsy. `input([prompt])` writes an optional prompt, reads one line, and returns it without the trailing newline; EOF raises an I/O error.
 
@@ -31,11 +31,15 @@ Arithmetic `+ - * / // %`, unary `+ - not`, comparisons `== != < <= > >=` (bool 
 - `raise` and `raise TypeError("msg")`
 - `with EXPR as NAME` (file handles from `fopen` implement `__enter__` / `__exit__`)
 
-Catchable runtime kinds: `TypeError`, `ValueError`, `IndexError`, `KeyError`, `ZeroDivisionError`, `OverflowError`, `NameError`, `OSError` (alias `IOError`), `RecursionError`, `ImportError`, `StopIteration`. Token, syntax, bytecode, memory, and internal errors are not catchable. Matching is by kind, not a class hierarchy; `OSError` and `IOError` share one kind (D-0044).
+Catchable runtime kinds: `TypeError`, `ValueError`, `IndexError`, `KeyError`, `ZeroDivisionError`, `OverflowError`, `NameError`, `OSError` (alias `IOError`), `RecursionError`, `ImportError`, `StopIteration`, and user exception instances. Builtin exceptions are real type objects under `BaseException` → `Exception`. Matching uses single-inheritance subtype checks (`except Exception` catches `ValueError`). Internal kind tags remain for C raise paths (D-0049). `OSError` and `IOError` share one type object (D-0044).
+
+## Classes (0.8)
+
+Module-level `class Name:` or `class Name(Base):` with a single base (default `object`). Class body may contain `pass`, simple name assignments, and `def` methods only. Instantiation calls the type; `__init__(self, ...)` runs if defined and must return `None`. Instance attributes live in a per-instance `__dict__`. Attribute load checks the instance dict, then the class dict, then the single base chain; functions found on the class become bound methods. `isinstance(obj, T)` and `issubclass(A, B)` walk that chain. `type(obj)` returns the type of user instances, exception objects, and type objects. Multiple inheritance, metaclasses, `super()`, descriptors, operator dunders, nested classes, and classes inside functions are not supported.
 
 ## Attributes
 
-Limited attribute access: `obj.name` loads a bound method from a per-type table, or a module export. Not a user object system. `list.append` / `list.pop` exist alongside `list_append` / `list_pop`. Dict: `get`, `keys`, `values`, `items`, `pop`. Set: `add`, `remove`, `discard`. Strings: ASCII/8-bit methods including case (`upper`/`lower`/`capitalize`/`swapcase`/`title`/`casefold`), search (`find`/`rfind`/`index`/`rindex`/`count`/`startswith`/`endswith`), trim (`strip`/`lstrip`/`rstrip`/`removeprefix`/`removesuffix`), split/join (`split`/`rsplit`/`splitlines`/`partition`/`rpartition`/`join`), `replace`, align (`center`/`ljust`/`rjust`/`zfill`), `expandtabs`, `translate`, and classifiers (`isalnum`…`isupper`). Methods are positional-only (no kwargs).
+Limited attribute access on builtin containers remains a static per-type method table (Level 0.3). User instances and types use dict/class lookup as above. Modules still resolve exports in their global table. `list.append` / `list.pop` exist alongside `list_append` / `list_pop`. Dict: `get`, `keys`, `values`, `items`, `pop`. Set: `add`, `remove`, `discard`. Strings: ASCII/8-bit methods including case (`upper`/`lower`/`capitalize`/`swapcase`/`title`/`casefold`), search (`find`/`rfind`/`index`/`rindex`/`count`/`startswith`/`endswith`), trim (`strip`/`lstrip`/`rstrip`/`removeprefix`/`removesuffix`), split/join (`split`/`rsplit`/`splitlines`/`partition`/`rpartition`/`join`), `replace`, align (`center`/`ljust`/`rjust`/`zfill`), `expandtabs`, `translate`, and classifiers (`isalnum`…`isupper`). Methods are positional-only (no kwargs).
 
 ## Imports (0.5)
 
@@ -124,4 +128,4 @@ multitasking, so no program has to yield for other programs to run.
 
 ## Still not implemented
 
-Classes and instances, Unicode, bytes/bytearray/`encode`, generator `send`/`throw`/`close()`, `yield from`, `yield` as an expression, async generators, closures, nested `def`, async, `match`, starred unpacking (`a, *rest`, `*args`/`**kwargs`), nested unpacking (`(a, b), c = …`), relative imports, `from x import *`, AmigaDOS `ENV:` GetVar/SetVar, file seek, encodings, method-style `open()` / `file.read()` with keyword `encoding=` and `FileNotFoundError` (post-0.6 option 1; today use `fopen`/`fread`), full `str.format`/`format_map`, nested/raw/bytes f-string prefixes, `eval`/`exec`/`compile`, `enumerate`/`reversed` and `iter(callable, sentinel)`, and Language Level freeze after owner emulator/hardware verification.
+Unicode, bytes/bytearray/`encode`, generator `send`/`throw`/`close()`, `yield from`, `yield` as an expression, async generators, closures, nested `def` (outside class methods), multiple inheritance, metaclasses, `super()`, descriptors/`property`, operator overloading, nested classes, async, `match`, starred unpacking (`a, *rest`, `*args`/`**kwargs`), nested unpacking (`(a, b), c = …`), relative imports, `from x import *`, AmigaDOS `ENV:` GetVar/SetVar, file seek, encodings, method-style `open()` / `file.read()` with keyword `encoding=` and `FileNotFoundError` (post-0.6 option 1; today use `fopen`/`fread`), full `str.format`/`format_map`, nested/raw/bytes f-string prefixes, `eval`/`exec`/`compile`, `enumerate`/`reversed` and `iter(callable, sentinel)`, and Language Level freeze after owner emulator/hardware verification.

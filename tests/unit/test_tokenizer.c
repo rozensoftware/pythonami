@@ -97,6 +97,11 @@ int main(void)
                     "malformed integer literals are rejected");
     py68_token_array_destroy(&allocator, &tokens);
     passed &= check(tokenize(&allocator, "class Thing:\n", &tokens, &error),
+                    "class keyword tokenizes");
+    passed &= check(tokens.items[0].kind == PY68_TOKEN_CLASS,
+                    "class token is emitted");
+    py68_token_array_destroy(&allocator, &tokens);
+    passed &= check(tokenize(&allocator, "lambda x: x\n", &tokens, &error),
                     "unsupported keywords are classified, not discarded");
     passed &= check(tokens.items[0].kind == PY68_TOKEN_UNSUPPORTED_KEYWORD,
                     "unsupported keyword token is emitted");

@@ -1,6 +1,6 @@
 # Python68K
 
-**Version 0.7.1** — Copyright © 2026 Piotr Rozentreter (Rozsoft)
+**Version 0.8.0** — Copyright © 2026 Piotr Rozentreter (Rozsoft)
 
 Python68K is a deliberately restricted, Python-compatible language and runtime for classic **Motorola 68000** Amiga systems (AmigaOS 2.x+), with a modern **Linux/host** build for development and testing.
 
@@ -10,7 +10,7 @@ Executable name: `pythonami`
 
 ---
 
-## Features (Language Level 0.1–0.7)
+## Features (Language Level 0.1–0.8)
 
 ### Values and operators
 - Scalars: integers (signed 32-bit, checked overflow), IEEE-754 binary32 `float` (soft-float, no NaN/Inf), `True` / `False`, `None`
@@ -49,6 +49,7 @@ Executable name: `pythonami`
 - Augmented assignment: `+= -= *= //= %=`
 
 ### Generators (0.7)
+
 - `yield` in a `def` makes it a generator factory; calling it builds a generator
   and runs no body code until it is resumed
 - `for x in gen`, `iter(gen)`, `next(gen[, default])`; a finished generator
@@ -58,6 +59,11 @@ Executable name: `pythonami`
 - `list` / `tuple` / `set` / `sorted` / `sum` / `all` / `any` consume generators
 - Free variables of an enclosing function are snapshotted when the generator is
   created (D-0046); no `send` / `throw` / `close()` / `yield from`
+
+### Classes (0.8)
+
+Module-level `class` with single inheritance, instance `__dict__`, `__init__`,
+bound methods, `isinstance`/`issubclass`, and exception type objects.
 
 ### Imports (0.5)
 - `import name`, `import name as alias`, `from name import a, b`
@@ -100,8 +106,8 @@ see `docs/amiga-extensions.md`. Host has no `load_library`.
 - Host unit tests and language fixture diffs (`make test`)
 - Error reporting with frame traceback
 
-### Not in 0.7.1
-Classes, Unicode, bytes, generator `send` / `throw` / `close()` / `yield from`, closures, nested `def`, method-style `open()` / `file.read()` / keyword `encoding=` / `FileNotFoundError` (post-0.6 option 1; `fopen` remains), seek, relative imports, `from x import *`, Amiga `ENV:` GetVar/SetVar, frozen emulator/hardware differential sign-off.
+### Not in 0.8.0
+Multiple inheritance, metaclasses, `super()`, descriptors, operator dunders, Unicode, bytes, generator `send` / `throw` / `close()` / `yield from`, closures, nested `def` outside methods, method-style `open()` / `file.read()` / keyword `encoding=` / `FileNotFoundError` (post-0.6 option 1; `fopen` remains), seek, relative imports, `from x import *`, Amiga `ENV:` GetVar/SetVar, frozen emulator/hardware differential sign-off.
 
 ---
 
@@ -198,7 +204,7 @@ Normative design briefs (for implementers): `Python68K_Full_Agent_Implementation
 ## Current verification status
 
 The host build and test suite are the primary executable checks. They cover the
-documented Language Levels 0.1-0.7, CLI smoke checks, imports, process APIs,
+documented Language Levels 0.1-0.8, CLI smoke checks, imports, process APIs,
 debug statistics, standard-stream separation, and `--check` mode. Amiga
 debug/release builds are compile/link-verified when vbcc and the NDK are
 available; execution on an emulator or real 68000 hardware remains a separate

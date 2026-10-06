@@ -68,6 +68,7 @@ Py68Status py68_frame_push(Py68Runtime *runtime, Py68Code *code,
     frame->generator = NULL;
     frame->stack_base = 0;
     frame->resume_kind = PY68_RESUME_NONE;
+    frame->constructing = py68_value_none();
     for (index = 0; index < local_count; ++index)
         frame->locals[index] = py68_value_unbound();
     for (index = 0; index < argument_count; ++index) {
@@ -101,6 +102,7 @@ Py68Status py68_frame_push_generator(Py68Runtime *runtime,
     frame->stack_base = stack_base;
     frame->resume_kind = resume_kind;
     frame->try_count = generator->try_count;
+    frame->constructing = py68_value_none();
     for (index = 0; index < generator->try_count; ++index) {
         frame->try_stack[index].handler_ip =
             generator->try_stack[index].handler_ip;
@@ -127,6 +129,8 @@ void py68_frame_pop(Py68Runtime *runtime)
     frame->locals = NULL;
     frame->local_count = 0;
     frame->generator = NULL;
+    py68_value_release(runtime, frame->constructing);
+    frame->constructing = py68_value_none();
     --runtime->frame_count;
     if (generator != NULL) {
         /* The locals belong to the generator, which owns their lifetime. */

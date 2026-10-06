@@ -15,6 +15,7 @@ typedef enum Py68AstKind {
     PY68_AST_WHILE,
     PY68_AST_FOR,
     PY68_AST_FUNCTION_DEF,
+    PY68_AST_CLASS_DEF,
     PY68_AST_RETURN,
     PY68_AST_YIELD,
     PY68_AST_BREAK,
@@ -84,6 +85,9 @@ struct Py68AstNode {
                  Py68AstList else_body; } for_statement;
         struct { Py68U32 name_offset; Py68U16 name_length;
                  Py68AstList parameters; Py68AstList body; } function_def;
+        struct { Py68U32 name_offset; Py68U16 name_length;
+                 Py68AstNode *base; /* NULL = object */
+                 Py68AstList body; } class_def;
         /* Shared by PY68_AST_RETURN and PY68_AST_YIELD; NULL value means a
            bare `return` or `yield`. */
         struct { Py68AstNode *value; } return_statement;

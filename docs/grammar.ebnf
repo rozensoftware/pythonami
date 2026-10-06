@@ -2,11 +2,11 @@
 
 The Language Level 0.1–0.5 grammar remains described in the implementation brief
 and the parser sources. Language Level 0.6 adds the comprehension forms below,
-and Language Level 0.7 adds `yield_statement` and `generator_expression`.
-Comprehension and generator-expression targets remain a single `NAME`.
-Assignment and `for` statements accept a fixed name list (D-0038). `star_expr`,
-async, nested unpack, and `yield` as an expression (including `yield from`) are
-not part of this grammar.
+Language Level 0.7 adds `yield_statement` and `generator_expression`, and
+Language Level 0.8 adds `class_statement`. Comprehension and generator-expression
+targets remain a single `NAME`. Assignment and `for` statements accept a fixed
+name list (D-0038). `star_expr`, async, nested unpack, multiple inheritance,
+and `yield` as an expression (including `yield from`) are not part of this grammar.
 
 Comparison operators include membership:
 
@@ -61,3 +61,11 @@ expression position (D-0045). A generator expression needs its parentheses
 except as a call's only argument, where `f(x for x in it)` uses the call
 parentheses. Generator-expression names do not bind in the enclosing scope,
 unlike comprehension names (D-0046).
+```ebnf
+class_statement  ::= "class" NAME ["(" expression ")"] ":" suite
+class_suite      ::= (pass_statement | simple_assign | function_def)+
+```
+
+Class statements are module-level only. A single optional base expression is
+allowed (default `object`). The suite is restricted to `pass`, simple name
+assignment, and `def` (D-0049). Multiple bases are a syntax error.

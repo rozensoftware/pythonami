@@ -3,6 +3,7 @@
 #include "py68k_exception.h"
 #include "py68k_native.h"
 #include "py68k_runtime.h"
+#include "py68k_type.h"
 
 #include <string.h>
 
@@ -26,6 +27,7 @@ const char *py68_error_kind_name(Py68U16 kind)
     case PY68_ERROR_INTERNAL: return "InternalError";
     case PY68_ERROR_INTERRUPT: return "KeyboardInterrupt";
     case PY68_ERROR_STOP_ITERATION: return "StopIteration";
+    case PY68_ERROR_EXCEPTION: return "Exception";
     default: return "Exception";
     }
 }
@@ -60,8 +62,9 @@ Py68U16 py68_error_kind_from_name(const char *name, Py68U16 length)
     return PY68_ERROR_INTERNAL;
 }
 
-Py68Status py68_exception_new(Py68Runtime *runtime, Py68U16 kind,
-                              const char *message, Py68Exception **result)
+Py68Status py68_exception_new_typed(Py68Runtime *runtime, Py68Type *type,
+                                    Py68U16 kind, const char *message,
+                                    Py68Exception **result)
 {
     Py68Exception *exception = (Py68Exception *)py68_alloc(
         &runtime->allocator, PY68_MEM_RUNTIME, sizeof(Py68Exception));
@@ -71,6 +74,9 @@ Py68Status py68_exception_new(Py68Runtime *runtime, Py68U16 kind,
     exception->base.reference_count = 1;
     exception->base.next_object = runtime->live_objects;
     runtime->live_objects = &exception->base;
+    exception->type = type;
+    if (type != NULL)
+        py68_object_retain(&type->base);
     exception->kind = kind;
     exception->message[0] = '\0';
     if (message != NULL) {
@@ -81,6 +87,13 @@ Py68Status py68_exception_new(Py68Runtime *runtime, Py68U16 kind,
     return PY68_STATUS_OK;
 }
 
+Py68Status py68_exception_new(Py68Runtime *runtime, Py68U16 kind,
+                              const char *message, Py68Exception **result)
+{
+    Py68Type *type = py68_type_for_error_kind(runtime, kind);
+    return py68_exception_new_typed(runtime, type, kind, message, result);
+}
+
 Py68Status py68_exception_from_error(Py68Runtime *runtime,
                                      Py68Exception **result)
 {
@@ -88,12 +101,27 @@ Py68Status py68_exception_from_error(Py68Runtime *runtime,
                               runtime->error.message, result);
 }
 
-int py68_exception_matches(Py68Exception *exception, Py68Value matcher)
+int py68_exception_matches(Py68Runtime *runtime, Py68Exception *exception,
+                           Py68Value matcher)
 {
     Py68NativeFunction *function;
+    Py68Type *matcher_type;
+    Py68Type *exc_type;
     if (exception == NULL) return 0;
     if (matcher.type != PY68_VALUE_OBJECT || matcher.as.object == NULL)
         return 0;
+    if (matcher.as.object->type == PY68_OBJECT_TYPE) {
+        matcher_type = (Py68Type *)matcher.as.object;
+        if ((matcher_type->flags & PY68_TYPE_FLAG_EXCEPTION) == 0) return 0;
+        exc_type = exception->type;
+        if (exc_type == NULL && runtime != NULL)
+            exc_type = py68_type_for_error_kind(runtime, exception->kind);
+        if (exc_type != NULL)
+            return py68_type_is_subtype(exc_type, matcher_type);
+        if (matcher_type->exception_kind != 0)
+            return matcher_type->exception_kind == exception->kind;
+        return 0;
+    }
     if (matcher.as.object->type == PY68_OBJECT_NATIVE_FUNCTION) {
         function = (Py68NativeFunction *)matcher.as.object;
         return function->base.flags == exception->kind;

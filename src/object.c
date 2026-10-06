@@ -16,6 +16,7 @@
 #include "py68k_generator.h"
 #include "py68k_module.h"
 #include "py68k_time.h"
+#include "py68k_type.h"
 #include "py68k_native.h"
 #include "py68k_platform.h"
 
@@ -111,10 +112,14 @@ void py68_object_release(Py68Runtime *runtime, Py68Object *object)
     } else if (object->type == PY68_OBJECT_BOUND_METHOD) {
         Py68BoundMethod *method = (Py68BoundMethod *)object;
         py68_value_release(runtime, method->self);
-        py68_object_release(runtime, &method->function->base);
+        if (method->callable != NULL)
+            py68_object_release(runtime, method->callable);
         py68_free(&runtime->allocator, PY68_MEM_FUNCTION, method,
                   sizeof(Py68BoundMethod));
     } else if (object->type == PY68_OBJECT_EXCEPTION) {
+        Py68Exception *exception = (Py68Exception *)object;
+        if (exception->type != NULL)
+            py68_object_release(runtime, &exception->type->base);
         py68_free(&runtime->allocator, PY68_MEM_RUNTIME, object,
                   sizeof(Py68Exception));
     } else if (object->type == PY68_OBJECT_MODULE) {
@@ -132,6 +137,24 @@ void py68_object_release(Py68Runtime *runtime, Py68Object *object)
         /* Close on release: state is freed deterministically, but the
            script's finally blocks do not run (D-0045). */
         py68_generator_destroy(runtime, (Py68Generator *)object);
+    } else if (object->type == PY68_OBJECT_TYPE) {
+        Py68Type *type = (Py68Type *)object;
+        if (type->name != NULL)
+            py68_object_release(runtime, &type->name->base);
+        if (type->base_type != NULL)
+            py68_object_release(runtime, &type->base_type->base);
+        if (type->dict != NULL)
+            py68_object_release(runtime, &type->dict->base);
+        py68_free(&runtime->allocator, PY68_MEM_RUNTIME, type,
+                  sizeof(Py68Type));
+    } else if (object->type == PY68_OBJECT_INSTANCE) {
+        Py68Instance *instance = (Py68Instance *)object;
+        if (instance->type != NULL)
+            py68_object_release(runtime, &instance->type->base);
+        if (instance->dict != NULL)
+            py68_object_release(runtime, &instance->dict->base);
+        py68_free(&runtime->allocator, PY68_MEM_RUNTIME, instance,
+                  sizeof(Py68Instance));
     } else {
         py68_free(&runtime->allocator, PY68_MEM_RUNTIME, object,
                   (Py68U32)sizeof(Py68Object));

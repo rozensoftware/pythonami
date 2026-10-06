@@ -4,6 +4,7 @@
 #include "py68k_dict.h"
 #include "py68k_exception.h"
 #include "py68k_file.h"
+#include "py68k_function.h"
 #include "py68k_list.h"
 #include "py68k_module.h"
 #include "py68k_native.h"
@@ -12,15 +13,18 @@
 #include "py68k_string.h"
 #include "py68k_string_methods.h"
 #include "py68k_time.h"
+#include "py68k_type.h"
 
 #include <stddef.h>
 #include <string.h>
 
-Py68Status py68_bound_method_new(Py68Runtime *runtime, Py68Value self,
-                                 Py68NativeFunction *function,
-                                 Py68BoundMethod **result)
+Py68Status py68_bound_method_new_callable(Py68Runtime *runtime, Py68Value self,
+                                          Py68Object *callable,
+                                          Py68BoundMethod **result)
 {
-    Py68BoundMethod *method = (Py68BoundMethod *)py68_alloc(
+    Py68BoundMethod *method;
+    if (callable == NULL) return PY68_STATUS_INTERNAL_ERROR;
+    method = (Py68BoundMethod *)py68_alloc(
         &runtime->allocator, PY68_MEM_FUNCTION, sizeof(Py68BoundMethod));
     if (method == NULL) return PY68_STATUS_MEMORY_ERROR;
     method->base.type = PY68_OBJECT_BOUND_METHOD;
@@ -30,10 +34,19 @@ Py68Status py68_bound_method_new(Py68Runtime *runtime, Py68Value self,
     runtime->live_objects = &method->base;
     method->self = self;
     py68_value_retain(self);
-    method->function = function;
-    py68_object_retain(&function->base);
+    method->callable = callable;
+    py68_object_retain(callable);
     *result = method;
     return PY68_STATUS_OK;
+}
+
+Py68Status py68_bound_method_new(Py68Runtime *runtime, Py68Value self,
+                                 Py68NativeFunction *function,
+                                 Py68BoundMethod **result)
+{
+    if (function == NULL) return PY68_STATUS_INTERNAL_ERROR;
+    return py68_bound_method_new_callable(runtime, self, &function->base,
+                                          result);
 }
 
 static Py68Status py68_attr_error(Py68Runtime *runtime, Py68ErrorKind kind,
@@ -452,6 +465,71 @@ Py68Status py68_attr_load(Py68Runtime *runtime, Py68Value object,
                 return PY68_STATUS_OK;
             }
         }
+    } else if (type == PY68_OBJECT_INSTANCE) {
+        Py68Instance *instance = (Py68Instance *)object.as.object;
+        Py68String *key;
+        Py68Value found_value;
+        int found = 0;
+        Py68Status status;
+        status = py68_string_new_copy(runtime, (const char *)name,
+                                      (Py68U32)name_length, &key);
+        if (status != PY68_STATUS_OK) return status;
+        if (instance->dict != NULL) {
+            status = py68_dict_get_copy(
+                runtime, instance->dict, py68_value_from_object(&key->base),
+                &found_value);
+            if (status == PY68_STATUS_OK) {
+                found = 1;
+                *result = found_value;
+            } else if (status != PY68_STATUS_SOURCE_ERROR) {
+                py68_object_release(runtime, &key->base);
+                return status;
+            }
+        }
+        py68_object_release(runtime, &key->base);
+        if (found) return PY68_STATUS_OK;
+        status = py68_type_lookup(runtime, instance->type, name, name_length,
+                                  &found_value, &found);
+        if (status != PY68_STATUS_OK) return status;
+        if (!found)
+            return py68_attr_error(runtime, PY68_ERROR_TYPE,
+                                   "unknown attribute");
+        if (found_value.type == PY68_VALUE_OBJECT &&
+            found_value.as.object != NULL &&
+            found_value.as.object->type == PY68_OBJECT_FUNCTION) {
+            Py68BoundMethod *method;
+            status = py68_bound_method_new_callable(
+                runtime, object, found_value.as.object, &method);
+            py68_value_release(runtime, found_value);
+            if (status != PY68_STATUS_OK) return status;
+            *result = py68_value_from_object(&method->base);
+            return PY68_STATUS_OK;
+        }
+        *result = found_value;
+        return PY68_STATUS_OK;
+    } else if (type == PY68_OBJECT_TYPE) {
+        Py68Type *type_obj = (Py68Type *)object.as.object;
+        Py68Value found_value;
+        int found = 0;
+        Py68Status status = py68_type_lookup(runtime, type_obj, name,
+                                             name_length, &found_value, &found);
+        if (status != PY68_STATUS_OK) return status;
+        if (!found)
+            return py68_attr_error(runtime, PY68_ERROR_TYPE,
+                                   "unknown attribute");
+        *result = found_value;
+        return PY68_STATUS_OK;
+    } else if (type == PY68_OBJECT_EXCEPTION) {
+        Py68Exception *exception = (Py68Exception *)object.as.object;
+        if (py68_attr_name_is(name, name_length, "message")) {
+            Py68String *message;
+            Py68Status status = py68_string_new_copy(
+                runtime, exception->message,
+                (Py68U32)strlen(exception->message), &message);
+            if (status != PY68_STATUS_OK) return status;
+            *result = py68_value_from_object(&message->base);
+            return PY68_STATUS_OK;
+        }
     }
     return py68_attr_error(runtime, PY68_ERROR_TYPE, "unknown attribute");
 }
@@ -460,10 +538,32 @@ Py68Status py68_attr_store(Py68Runtime *runtime, Py68Value object,
                            const Py68U8 *name, Py68U16 name_length,
                            Py68Value value)
 {
-    if (object.type != PY68_VALUE_OBJECT || object.as.object == NULL ||
-        object.as.object->type != PY68_OBJECT_MODULE)
+    if (object.type != PY68_VALUE_OBJECT || object.as.object == NULL)
         return py68_attr_error(runtime, PY68_ERROR_TYPE,
-                               "attribute assignment requires a module");
-    return py68_module_set(runtime, (Py68Module *)object.as.object, name,
-                           name_length, value);
+                               "attribute assignment requires an object");
+    if (object.as.object->type == PY68_OBJECT_MODULE)
+        return py68_module_set(runtime, (Py68Module *)object.as.object, name,
+                               name_length, value);
+    if (object.as.object->type == PY68_OBJECT_INSTANCE ||
+        object.as.object->type == PY68_OBJECT_TYPE) {
+        Py68Dict *dict;
+        Py68String *key;
+        Py68Status status;
+        if (object.as.object->type == PY68_OBJECT_INSTANCE)
+            dict = ((Py68Instance *)object.as.object)->dict;
+        else
+            dict = ((Py68Type *)object.as.object)->dict;
+        if (dict == NULL)
+            return py68_attr_error(runtime, PY68_ERROR_TYPE,
+                                   "object has no attribute dictionary");
+        status = py68_string_new_copy(runtime, (const char *)name,
+                                      (Py68U32)name_length, &key);
+        if (status != PY68_STATUS_OK) return status;
+        status = py68_dict_set_copy(runtime, dict,
+                                    py68_value_from_object(&key->base), value);
+        py68_object_release(runtime, &key->base);
+        return status;
+    }
+    return py68_attr_error(runtime, PY68_ERROR_TYPE,
+                           "attribute assignment requires a module or instance");
 }

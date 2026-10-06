@@ -4,6 +4,7 @@
 #include "py68k_exception.h"
 #include "py68k_native.h"
 #include "py68k_string_methods.h"
+#include "py68k_type.h"
 #if defined(PY68K_AMIGA)
 #include "py68k_ext_load.h"
 #endif
@@ -222,37 +223,5 @@ Py68Status py68_builtins_install(Py68Runtime *runtime)
         py68_object_release(runtime, &function->base);
         if (status != PY68_STATUS_OK) return status;
     }
-    {
-        static const struct {
-            const char *name;
-            Py68U16 kind;
-        } exceptions[] = {
-            { "TypeError", PY68_ERROR_TYPE },
-            { "ValueError", PY68_ERROR_VALUE },
-            { "IndexError", PY68_ERROR_INDEX },
-            { "KeyError", PY68_ERROR_KEY },
-            { "ZeroDivisionError", PY68_ERROR_ZERO_DIVISION },
-            { "OverflowError", PY68_ERROR_OVERFLOW },
-            { "NameError", PY68_ERROR_NAME },
-            { "OSError", PY68_ERROR_IO },
-            { "IOError", PY68_ERROR_IO },
-            { "RecursionError", PY68_ERROR_RECURSION },
-            { "ImportError", PY68_ERROR_IMPORT },
-            { "StopIteration", PY68_ERROR_STOP_ITERATION }
-        };
-        for (index = 0; index < sizeof(exceptions) / sizeof(exceptions[0]);
-             ++index) {
-            status = py68_native_new(runtime, exceptions[index].name, 0, 1,
-                                     py68_builtin_exception, &function);
-            if (status != PY68_STATUS_OK) return status;
-            function->base.flags = exceptions[index].kind;
-            status = py68_builtin_set_copy(
-                runtime, (const Py68U8 *)exceptions[index].name,
-                py68_static_strlen(exceptions[index].name),
-                py68_value_from_object(&function->base));
-            py68_object_release(runtime, &function->base);
-            if (status != PY68_STATUS_OK) return status;
-        }
-    }
-    return PY68_STATUS_OK;
+    return py68_types_install(runtime);
 }

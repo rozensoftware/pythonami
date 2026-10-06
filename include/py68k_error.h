@@ -25,7 +25,10 @@ typedef enum Py68ErrorKind {
     PY68_ERROR_INTERNAL,
     /* Appended last: existing kind numbers must stay stable. */
     PY68_ERROR_INTERRUPT,
-    PY68_ERROR_STOP_ITERATION
+    PY68_ERROR_STOP_ITERATION,
+    /* Catchable stand-in kind for user-defined exception instances that have
+       a real type pointer but no builtin PY68_ERROR_* mapping (Level 0.8). */
+    PY68_ERROR_EXCEPTION
 } Py68ErrorKind;
 
 typedef struct Py68Error {
