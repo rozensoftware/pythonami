@@ -143,3 +143,19 @@ closed
 
 Details: `tests/integration/amiga/test_gui_intuition.md`. Owner-verified on
 emulator/hardware only.
+
+## amiga_gfx custom-screen smoke fixture
+
+After `make amiga-ext`, place `ext/amiga_gfx/amiga_gfx.py68k` so
+`PROGDIR:ext/amiga_gfx/amiga_gfx.py68k` resolves.
+
+```text
+pythonami tests/integration/amiga/test_amiga_gfx.py >T:py68k-gfx-out
+```
+
+Opens a LORES custom screen, draws, waits for ESC/q/close. Musashi cannot
+validate Intuition. Details: `tests/integration/amiga/test_amiga_gfx.md`.
+
+Blit + 8 sprites + input: `test_amiga_gfx_blit_sprites.py` (see `.md`).
+Workbench window draw/blit: `test_amiga_gfx_window.py`.
+BOB save-background vs trail: `test_amiga_gfx_bob.py`.

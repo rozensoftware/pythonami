@@ -159,3 +159,12 @@ Progress / live status exports (installer): `add_progress`, `set_progress`,
 
 `make amiga-ext` builds `ext/asl/asl.py68k` with `ask_drawer(title, initial)`.
 Used by `examples/installer/installer.py`. See `docs/amiga-gui-installer.md`.
+
+## amiga_gfx custom-screen plugin
+
+`make amiga-ext` builds `ext/amiga_gfx/amiga_gfx.py68k` — OS-cooperative
+Intuition custom screens **or** Workbench windows (draw/blit on RastPort),
+SimpleSprites, soft BOBs (`bob_create` save-background), IDCMP keyboard/mouse,
+`lowlevel.library` joystick. Not TakeSystem; not the `gui_intuition` dialog
+singleton. Contract: HAS `docs/AMIGA_OS_GFX_API.md`, pythonami
+`docs/amiga-os-gfx.md`. Layer 2: `lib/amiga_gfx.py`. Fixtures: `test_amiga_gfx*.md`.

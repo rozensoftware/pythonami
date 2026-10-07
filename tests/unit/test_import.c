@@ -31,6 +31,14 @@ int main(void)
         "got = mod_a.value\n";
 
     passed &= py68_runtime_initialize(&runtime) == PY68_STATUS_OK;
+    /* Amiga volume/assign paths must keep the trailing colon. */
+    py68_set_script_dir(&runtime, "DH0:scripts/test1.py");
+    passed &= strcmp(runtime.script_dir, "DH0:scripts") == 0;
+    py68_set_script_dir(&runtime, "PROGDIR:test1.py");
+    passed &= strcmp(runtime.script_dir, "PROGDIR:") == 0;
+    /* Bare script name leaves script_dir "."; import still finds siblings. */
+    py68_set_script_dir(&runtime, "test1.py");
+    passed &= strcmp(runtime.script_dir, ".") == 0;
     py68_set_script_dir(&runtime, "tests/language/import/driver.py");
     passed &= py68_builtins_install(&runtime) == PY68_STATUS_OK;
     passed &= py68_sys_install(&runtime) == PY68_STATUS_OK;

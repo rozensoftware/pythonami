@@ -2,8 +2,22 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Amiga sibling imports:** `py68_set_script_dir` kept volume/assign names
+  without the trailing colon (`PROGDIR` → `PROGDIR/myclass.py`). It now
+  preserves `PROGDIR:` / `DH0:` so `import` finds modules next to the script.
+  Also, joining with script_dir/sys.path `.` no longer yields `./file.py`
+  (invalid on AmigaDOS); bare `pythonami test1.py` from the script drawer works.
+
 ### Added
 
+- **Amiga OS custom-screen graphics plugin:** `ext/amiga_gfx/amiga_gfx.py68k`
+  (OpenScreen / Workbench `open_window` / SetRGB4 / RastPort draw / blit /
+  soft BOBs with optional background save/`bob_draw` restore /
+  SimpleSprites / IDCMP keyboard+mouse / `lowlevel` joystick). Layer 2:
+  `lib/amiga_gfx.py`. Docs: `docs/amiga-os-gfx.md`. Fixtures:
+  `test_amiga_gfx*`, blit+sprites, WB window, BOB. Host `--check` smokes.
 - **Amiga GUI installer foundation:** `examples/installer/` plus `lib/install_*.py`
   (`install.ami` / `uninstall.ami`, LHA extract via `lha`, User-Startup upsert,
   safe uninstall that opens `ed S:User-Startup`). Plugins: extended

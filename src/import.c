@@ -43,15 +43,36 @@ void py68_set_script_dir(Py68Runtime *runtime, const char *path)
             last = (Py68I32)length;
         ++length;
     }
-    if (last <= 0) return;
-    memcpy(runtime->script_dir, path, (Py68U32)last);
-    runtime->script_dir[last] = '\0';
+    if (last < 0) return;
+    /*
+     * Keep Amiga volume/assign colon in the prefix so join yields
+     * "DH0:myclass.py" / "PROGDIR:myclass.py", not "DH0/myclass.py".
+     * Unix/Windows directory separators are stripped as usual.
+     */
+    if (path[last] == ':') {
+        if ((Py68U32)last + 2 > PY68_PATH_MAX) return;
+        memcpy(runtime->script_dir, path, (Py68U32)last + 1);
+        runtime->script_dir[last + 1] = '\0';
+    } else {
+        if (last == 0 && path[0] == '/') {
+            runtime->script_dir[0] = '/';
+            runtime->script_dir[1] = '\0';
+            return;
+        }
+        memcpy(runtime->script_dir, path, (Py68U32)last);
+        runtime->script_dir[last] = '\0';
+    }
 }
 
 static void py68_join_path(char *out, const char *dir, const char *name)
 {
     Py68U32 pos = 0;
-    if (dir != NULL) {
+    /*
+     * Bare "." (default script_dir / sys.path entry) must not become "./file".
+     * On AmigaDOS, "/" is parent-directory and "./name" often fails Lock().
+     */
+    if (dir != NULL && dir[0] != '\0' &&
+        !(dir[0] == '.' && dir[1] == '\0')) {
         while (dir[pos] != '\0' && pos + 2 < PY68_PATH_MAX) {
             out[pos] = dir[pos];
             ++pos;

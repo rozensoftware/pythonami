@@ -5,7 +5,8 @@ Python68K is a restricted Python-compatible language, not CPython. Language Leve
 Generators follow CPython for lazy production, `for`/`iter`/`next`, `StopIteration`, one-shot exhaustion, and `ValueError` when a running generator is resumed again, but they are deliberately narrower (D-0045): `yield` is a statement rather than an expression, a `return` value inside a generator is discarded instead of becoming `StopIteration.value`, there is no `send`/`throw`/`close()`/`yield from`, dropping the last reference to an unfinished generator frees it without running its `finally` blocks, and generators have no `str`/`print` form. Generator expressions snapshot the free variables of an enclosing function when the generator is created, so later rebinding is not observed, and their loop targets do not bind in the enclosing scope even though comprehension targets do (D-0046). Only `list`, `tuple`, `set`, `sorted`, `sum`, `all`, and `any` consume a generator argument; `min`, `max`, `len`, and `in` raise `TypeError` for one (D-0047).
 
 Import compatibility is limited to single-level `.py` modules. The importing
-script directory has precedence over `sys.path`, and `sys.path` is searched in
+script directory has precedence over `sys.path` (Amiga volume paths keep the
+trailing `:` so `PROGDIR:script.py` imports `PROGDIR:sibling.py`), and `sys.path` is searched in
 list order. Host paths use `/`; the platform path abstraction also accepts
 Amiga-style `:` and `\\` separators when supplied by a script. Packages,
 dotted names, relative imports, and native ABI **imports** are not supported.
