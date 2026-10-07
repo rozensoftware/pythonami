@@ -20,7 +20,7 @@ does not execute it; use it before `-c` or the script path.
 
 | Command | Example | Description |
 | --- | --- | --- |
-| Show version | `pythonami -V` | Prints the current version, `Python68K 0.8.0`. `--version` is the long form. |
+| Show version | `pythonami -V` | Prints the current version, `Python68K 0.8.1`. `--version` is the long form. |
 | Show help | `pythonami --help` | Prints the usage line. Running `pythonami` with no input does the same. |
 | Run a script | `pythonami examples/hello.py` | Loads, compiles, verifies, and executes one `.py` source file. |
 | Pass script arguments | `pythonami examples/test_features.py one two` | Makes the script path and following arguments available as `sys.argv`. |

@@ -52,12 +52,16 @@ Host `tests/unit/test_file_io.c` and `tests/language/test_file_io_suite.py` exer
 ## Amiga LoadSeg extensions
 
 `make amiga-ext` builds `ext/demo_add/demo_add.py68k` and
-`ext/gui_intuition/gui_intuition.py68k` (vbcc + vasm + vlink). The Amiga
-interpreter (`src/ext_amiga.c`) installs `load_library`. Host unit coverage for
-extension services (D-0048) is `tests/unit/test_ext_services.c`. Owner-run steps
-are in `tests/integration/amiga/README.md`, `test_load_library.py`, and
-`test_gui_intuition.py`. Host has no `load_library`. Intuition GUI execution is
-owner-verified only (not Musashi).
+`ext/gui_intuition/gui_intuition.py68k`, `ext/asl/asl.py68k`, and
+`ext/amiga_gfx/amiga_gfx.py68k` (vbcc + vasm + vlink). The Amiga interpreter
+(`src/ext_amiga.c`) installs `load_library`. Host unit coverage for extension
+services (D-0048) is `tests/unit/test_ext_services.c`. A host `--check` smoke
+check covers `examples/amiga_gfx_smoke.py`; `examples/test_install_ami.py`
+exercises the install metadata and User-Startup helpers on the host. Owner-run
+Amiga steps are in `tests/integration/amiga/README.md`, including the
+`test_load_library.py`, `test_gui_intuition.py`, and `test_amiga_gfx*.py`
+fixtures. Host has no `load_library`; plugin execution on Amiga remains
+owner-verified only.
 
 ## Cross-target fixture comparison (host vs. Amiga emulator/hardware)
 

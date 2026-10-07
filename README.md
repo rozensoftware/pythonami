@@ -1,6 +1,6 @@
 # Python68K
 
-**Version 0.8.0** — Copyright © 2026 Piotr Rozentreter (Rozsoft)
+**Version 0.8.1** — Copyright © 2026 Piotr Rozentreter (Rozsoft)
 
 Python68K is a deliberately restricted, Python-compatible language and runtime for classic **Motorola 68000** Amiga systems (AmigaOS 2.x+), with a modern **Linux/host** build for development and testing.
 
@@ -97,8 +97,10 @@ Amiga uses DOS `Open`/`Read`/`Write`/`Seek`/`Close`/`Lock`/`DeleteFile`/`Rename`
 | `setenv(name, value)` | `assign_add(name, path)` via `AssignPath` |
 | `unsetenv(name)` | `assign_remove(name)` via `AssignLock(name, 0)` |
 
-Amiga also provides `load_library(path)` for LoadSeg `*.py68k` plugins (vbcc/vasm);
-see `docs/amiga-extensions.md`. Host has no `load_library`.
+Amiga also provides `load_library(path)` for LoadSeg `*.py68k` plugins (vbcc/vasm),
+including the Intuition/ASL tools and OS-cooperative graphics extension; see
+[`docs/amiga-extensions.md`](docs/amiga-extensions.md) and
+[`docs/amiga-os-gfx.md`](docs/amiga-os-gfx.md). Host has no `load_library`.
 
 ### Tooling
 - CLI: `pythonami script.py`, `pythonami --check script.py`, `pythonami -c "..."`, `-V` / `--help`
@@ -106,7 +108,7 @@ see `docs/amiga-extensions.md`. Host has no `load_library`.
 - Host unit tests and language fixture diffs (`make test`)
 - Error reporting with frame traceback
 
-### Not in 0.8.0
+### Not in 0.8.1
 Multiple inheritance, metaclasses, `super()`, descriptors, operator dunders, Unicode, bytes, generator `send` / `throw` / `close()` / `yield from`, closures, nested `def` outside methods, method-style `open()` / `file.read()` / keyword `encoding=` / `FileNotFoundError` (planned beyond 0.8; `fopen` remains), seek, relative imports, `from x import *`, Amiga `ENV:` GetVar/SetVar, frozen emulator/hardware differential sign-off.
 
 ---
@@ -119,7 +121,7 @@ make host                 # → build/host/pythonami (debug)
 make host MODE=release
 make amiga                # → ./pythonami (Amiga release Hunk)
 make amiga MODE=debug     # → ./pythonami-debug
-make amiga-ext            # → ext/demo_add/demo_add.py68k (vasm/vlink)
+make amiga-ext            # → Amiga LoadSeg plugins (demo, GUI, ASL, graphics)
 make test                 # host unit + language tests
 make clean
 ```
