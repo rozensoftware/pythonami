@@ -1,4 +1,5 @@
 VBCC ?= /home/piotr/local/vbcc
+export VBCC
 VC ?= $(VBCC)/bin/vc
 VASM ?= $(VBCC)/bin/vasmm68k_mot
 VLINK ?= $(VBCC)/bin/vlink
@@ -28,12 +29,17 @@ EXT_ASL_OUT := $(EXT_ASL_DIR)/asl.py68k
 EXT_ASL_OBJS := $(EXT_ASL_DIR)/asl_header.o \
 	$(EXT_ASL_DIR)/asl.o
 
+EXT_GFX_DIR := ext/amiga_gfx
+EXT_GFX_OUT := $(EXT_GFX_DIR)/amiga_gfx.py68k
+EXT_GFX_OBJS := $(EXT_GFX_DIR)/amiga_gfx_header.o \
+	$(EXT_GFX_DIR)/amiga_gfx.o
+
 EXT_CPPFLAGS := -Iinclude -I$(VBCC_INCLUDE) -I$(NDK)/Include_H -DPY68K_AMIGA=1
 VASMFLAGS := -Fhunk -m68000 -quiet
 # No startup.o / vc.lib — pure LoadSeg plugin hunks (D-0004 / D-0027).
 VLINKFLAGS := -bamigahunk -s
 
-.PHONY: amiga-debug amiga-release amiga-ext ext-demo_add ext-gui_intuition ext-asl clean
+.PHONY: amiga-debug amiga-release amiga-ext ext-demo_add ext-gui_intuition ext-asl ext-amiga_gfx clean
 
 amiga-debug:
 	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_DEBUG) $(CPPFLAGS) $(SOURCES) -o pythonami-debug
@@ -41,13 +47,15 @@ amiga-debug:
 amiga-release:
 	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_RELEASE) $(CPPFLAGS) $(SOURCES) -o pythonami
 
-amiga-ext: ext-demo_add ext-gui_intuition ext-asl
+amiga-ext: ext-demo_add ext-gui_intuition ext-asl ext-amiga_gfx
 
 ext-demo_add: $(EXT_DEMO_OUT)
 
 ext-gui_intuition: $(EXT_GUI_OUT)
 
 ext-asl: $(EXT_ASL_OUT)
+
+ext-amiga_gfx: $(EXT_GFX_OUT)
 
 $(EXT_DEMO_DIR)/demo_add_header.o: $(EXT_DEMO_DIR)/demo_add_header.s
 	$(VASM) $(VASMFLAGS) -o $@ $<
@@ -79,8 +87,18 @@ $(EXT_ASL_DIR)/asl.o: $(EXT_ASL_DIR)/asl.c include/py68k_ext.h
 $(EXT_ASL_OUT): $(EXT_ASL_OBJS)
 	$(VLINK) $(VLINKFLAGS) -o $@ $(EXT_ASL_OBJS)
 
+$(EXT_GFX_DIR)/amiga_gfx_header.o: $(EXT_GFX_DIR)/amiga_gfx_header.s
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+$(EXT_GFX_DIR)/amiga_gfx.o: $(EXT_GFX_DIR)/amiga_gfx.c include/py68k_ext.h
+	$(VC) $(AMIGA_TARGET) $(AMIGA_CPU) $(AMIGA_RELEASE) $(EXT_CPPFLAGS) -c -o $@ $(EXT_GFX_DIR)/amiga_gfx.c
+
+$(EXT_GFX_OUT): $(EXT_GFX_OBJS)
+	$(VLINK) $(VLINKFLAGS) -o $@ $(EXT_GFX_OBJS)
+
 clean:
 	rm -f python python-debug pythonami pythonami-debug
 	rm -f $(EXT_DEMO_OUT) $(EXT_DEMO_OBJS)
 	rm -f $(EXT_GUI_OUT) $(EXT_GUI_OBJS)
 	rm -f $(EXT_ASL_OUT) $(EXT_ASL_OBJS)
+	rm -f $(EXT_GFX_OUT) $(EXT_GFX_OBJS)
